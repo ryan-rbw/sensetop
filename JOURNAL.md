@@ -1208,4 +1208,213 @@ Sensor Reads → SensorHistory → DataHistoryManager → GraphView/Export
 | 4 | 2025-10-28 | Phase 2: Terminal UI Framework (MVP) | ✅ Complete |
 | 5 | 2025-10-28 | Phase 2: Keyboard & Help System | ✅ Complete |
 | 6 | 2025-10-28 | Phase 3: Data Processing & Visualization | ✅ Complete |
+| 7 | 2025-10-28 | Phase 4: Threshold Management & Alarms (Part 1) | 🔄 In Progress |
+
+---
+
+## Phase 4: Testing, Quality Assurance & Threshold Management
+
+**Objective:** Implement threshold management system for sensor data monitoring, alarm tracking, and configuration persistence. Focus on quality assurance with comprehensive testing and validation.
+
+**Target Metrics:**
+- 25+ threshold management tests with 90%+ coverage
+- 5 default sensor thresholds configured
+- JSON persistence for threshold configuration
+- Alarm history tracking (max 500 events)
+- Integration with main sensor read loop
+
+### Session 7: Threshold & Alarm System Implementation
+
+**Date:** 2025-10-28
+**Duration:** ~1 hour
+**Status:** COMPLETED
+
+#### Architecture Design
+
+**Threshold Zones Model:**
+```
+critical_min ──────── min_value ──── max_value ──────── critical_max
+    │                    │            │                    │
+  CRITICAL          WARNING/OK ZONE                    CRITICAL
+  (too low)                                             (too high)
+```
+
+This hierarchical model allows:
+- Critical zone detection (values outside the safe operating range)
+- Warning zone detection (values within safe but suboptimal range)
+- OK status (values in optimal operating range)
+
+**Key Components:**
+
+1. **SensorThreshold** (dataclass)
+   - `sensor_name`: Identifier for the sensor
+   - `min_value`, `max_value`: Warning zone boundaries
+   - `critical_min`, `critical_max`: Critical zone boundaries (optional)
+   - `enabled`: Enable/disable threshold checking
+   - Validation: `critical_min <= min_value`, `critical_max >= max_value`
+
+2. **ThresholdManager** (singleton pattern)
+   - Manages thresholds for multiple sensors
+   - Persistent JSON storage at `~/.sensetop/thresholds.json`
+   - Default thresholds for: temperature, humidity, pressure, cpu_temperature, memory_percent
+   - Methods: load_from_file(), save_to_file(), reset_to_defaults(), check_value()
+
+3. **AlarmSeverity** (enum)
+   - INFO, WARNING, CRITICAL severity levels
+   - Maps to threshold violation status
+
+4. **AlarmEvent** (dataclass)
+   - `sensor_name`, `value`, `severity`, `timestamp`, `message`
+   - `acknowledged`: Manual acknowledgment flag
+   - String representation for logging/display
+
+5. **AlarmManager** (stateful)
+   - Tracks active alarms per sensor
+   - Maintains alarm history (max 500 events)
+   - Methods: check_and_create_alarm(), acknowledge_alarm(), get_active_critical_alarms()
+   - History query with limit support
+
+#### Implementation Details
+
+**File: sensetop/data/thresholds.py** (227 lines)
+- SensorThreshold dataclass with comprehensive validation
+- ThresholdManager with deep copy for thread-safe defaults
+- Five default thresholds configured with realistic ranges
+- JSON serialization via dataclasses.asdict()
+
+**File: sensetop/data/alarms.py** (213 lines)
+- AlarmEvent dataclass with __repr__ for logging
+- AlarmManager with dual storage (active + history)
+- Automatic alarm clearance when threshold returns to OK
+- Acknowledgment tracking for alarm management
+
+**File: sensetop/app.py** (Modified)
+- Import ThresholdManager and AlarmManager
+- Initialize managers in __init__
+- Check thresholds in sensor read loop for:
+  - Environmental sensor: temperature, humidity, pressure
+  - System sensor: cpu_temperature, memory_percent
+- Alarms created on threshold violation
+
+#### Issues Encountered & Solutions
+
+**Issue 1: Threshold Validation Logic Backwards**
+- **Problem:** Initial constraint was `critical_min >= min_value`, but semantically critical zone should be outside the warning zone
+- **Root Cause:** Misunderstanding of zone hierarchy
+- **Solution:** Fixed validation to `critical_min <= min_value` and `critical_max >= max_value`
+- **Impact:** Required test adjustments and fixing default thresholds
+
+**Issue 2: Shallow Copy of Default Thresholds**
+- **Problem:** Test modifications were leaking into subsequent tests due to shallow copy
+- **Root Cause:** `DEFAULT_THRESHOLDS.copy()` creates shallow copy, objects are still references
+- **Solution:** Changed to `deepcopy(DEFAULT_THRESHOLDS)` for thread-safe isolation
+- **Impact:** Fixed all test isolation issues
+
+**Issue 3: Default Thresholds Had Invalid Critical Values**
+- **Problem:** Pressure threshold had `critical_min=260 < min_value=950`, violating new constraints
+- **Root Cause:** Original validation logic was backwards
+- **Solution:** Updated all defaults to have logically consistent critical ranges
+- **Impact:** All defaults now pass validation
+
+**Issue 4: Test Expectations Based on Old Logic**
+- **Problem:** Tests expected humidity=5 to be warning, but it's now critical
+- **Root Cause:** Test didn't account for corrected critical threshold boundaries
+- **Solution:** Updated test values to match corrected thresholds
+- **Impact:** All 25 threshold tests now pass
+
+#### Test Coverage
+
+**File: tests/test_thresholds.py** (384 lines, 25 tests)
+
+**TestSensorThreshold** (6 tests, 100% pass rate)
+- ✅ test_threshold_creation
+- ✅ test_threshold_validation (both valid and invalid)
+- ✅ test_threshold_check_ok
+- ✅ test_threshold_check_warning
+- ✅ test_threshold_check_critical
+- ✅ test_threshold_disabled
+
+**TestThresholdManager** (7 tests, 100% pass rate)
+- ✅ test_manager_creation
+- ✅ test_manager_defaults (loads 5 default sensors)
+- ✅ test_set_threshold
+- ✅ test_check_value (both OK and critical ranges)
+- ✅ test_save_and_load (JSON persistence round-trip)
+- ✅ test_reset_to_defaults (deep copy isolation)
+- ✅ test_enable_disable_sensor
+
+**TestAlarmEvent** (2 tests, 100% pass rate)
+- ✅ test_alarm_event_creation
+- ✅ test_alarm_event_acknowledge
+
+**TestAlarmManager** (9 tests, 100% pass rate)
+- ✅ test_alarm_manager_creation
+- ✅ test_check_value_no_alarm
+- ✅ test_check_value_creates_alarm
+- ✅ test_acknowledge_alarm
+- ✅ test_get_critical_alarms
+- ✅ test_alarm_history
+- ✅ test_alarm_history_limit
+- ✅ test_has_active_alarms
+- ✅ test_has_critical_alarms
+- ✅ test_acknowledge_all
+
+**Overall Results:**
+- Total Tests: 147 (all passing)
+- New Tests: 25 (Phase 4)
+- Previous Tests: 122 (all still passing)
+- Code Coverage: ~68% (estimated)
+- New Modules: 2 (thresholds.py, alarms.py)
+
+#### Default Thresholds Configured
+
+| Sensor | Min | Max | Critical Min | Critical Max |
+|--------|-----|-----|--------------|--------------|
+| temperature | 0.0°C | 50.0°C | -40.0°C | 80.0°C |
+| humidity | 30% | 70% | 10% | 90% |
+| pressure | 950 hPa | 1050 hPa | 850 hPa | 1150 hPa |
+| cpu_temperature | 20°C | 60°C | -10°C | 95°C |
+| memory_percent | 0% | 75% | 0% | 95% |
+
+### What Works Well
+
+- ✅ Threshold validation is correct and consistent
+- ✅ Deep copy ensures test isolation
+- ✅ JSON persistence is transparent and reliable
+- ✅ Alarm creation integrates smoothly with sensor read loop
+- ✅ History tracking with limit prevents memory bloat
+- ✅ Acknowledgment tracking enables alert management
+- ✅ Default thresholds are realistic and sensible
+- ✅ All 25 tests pass consistently
+
+### What Still Needs Implementation
+
+1. **Alarm Display in UI**
+   - Create AlertView for displaying active alarms
+   - Show alarm count and severity indicators
+   - Support alarm acknowledgment from UI
+
+2. **Settings View**
+   - Runtime threshold configuration
+   - Save/load configuration
+   - Reset to defaults option
+
+3. **Alarm Logging**
+   - Log all alarm events to file
+   - Create alarm report generation
+   - Export alarm history
+
+4. **Advanced Features**
+   - Hysteresis detection (prevent alarm flapping)
+   - Threshold profiles (different sets for day/night)
+   - Smart alerts (only notify on state change)
+
+### Next Steps
+
+1. Create AlertView for displaying active/critical alarms
+2. Implement SettingsView for threshold configuration
+3. Add threshold persistence to config save/load
+4. Integrate UI views into main app navigation
+5. Add alarm logging to history
+6. Implement alert acknowledgment from UI
 

@@ -7,7 +7,9 @@ import time
 from typing import Dict, List, Optional
 
 from sensetop.config import Config
+from sensetop.data.alarms import AlarmManager
 from sensetop.data.history import DataHistoryManager
+from sensetop.data.thresholds import ThresholdManager
 from sensetop.display.colors import ColorManager, ColorScheme
 from sensetop.display.tui import TUI
 from sensetop.display.views import DashboardView, GraphView, HelpView
@@ -45,6 +47,10 @@ class SenseTopApp:
 
         # Data history manager
         self.data_history = DataHistoryManager(buffer_capacity=self.config.buffer_size)
+
+        # Threshold and alarm management
+        self.threshold_manager = ThresholdManager()
+        self.alarm_manager = AlarmManager(self.threshold_manager)
 
         # Control flags
         self.running = False
@@ -119,7 +125,7 @@ class SenseTopApp:
                         reading = sensor.read()
                         sensor_data[sensor_name] = reading
 
-                        # Store readings in data history
+                        # Store readings in data history and check thresholds
                         if sensor_name == "imu":
                             self.data_history.add_reading("accel_x", reading.value.accel_x)
                             self.data_history.add_reading("accel_y", reading.value.accel_y)
@@ -128,11 +134,18 @@ class SenseTopApp:
                             self.data_history.add_reading("temperature", reading.value.temperature)
                             self.data_history.add_reading("humidity", reading.value.humidity)
                             self.data_history.add_reading("pressure", reading.value.pressure)
+                            # Check thresholds
+                            self.alarm_manager.check_and_create_alarm("temperature", reading.value.temperature)
+                            self.alarm_manager.check_and_create_alarm("humidity", reading.value.humidity)
+                            self.alarm_manager.check_and_create_alarm("pressure", reading.value.pressure)
                         elif sensor_name == "system":
                             self.data_history.add_reading("cpu_temperature", reading.value.cpu_temp)
                             self.data_history.add_reading(
                                 "memory_percent", reading.value.memory_percent
                             )
+                            # Check thresholds
+                            self.alarm_manager.check_and_create_alarm("cpu_temperature", reading.value.cpu_temp)
+                            self.alarm_manager.check_and_create_alarm("memory_percent", reading.value.memory_percent)
 
                     except Exception as e:
                         self.logger.error(f"Error reading {sensor_name}: {e}")
