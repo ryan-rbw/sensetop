@@ -1,4 +1,4 @@
-.PHONY: help install install-dev test lint format type-check clean build run
+.PHONY: help install install-dev test lint format type-check clean build run demo
 
 help:
 	@echo "SenseTop Development Makefile"
@@ -13,6 +13,7 @@ help:
 	@echo "  clean         - Remove build artifacts and cache files"
 	@echo "  build         - Build distribution package"
 	@echo "  run           - Run the application"
+	@echo "  demo          - Run with mocked sensors (local testing)"
 
 install:
 	pip install -e .
@@ -51,3 +52,6 @@ build: clean
 
 run:
 	python -m sensetop
+
+demo:
+	python run_local_demo.py
