@@ -143,9 +143,14 @@ class TUI:
                 self.set_current_view("graphs")
             return True
 
-        if key == ord("3"):  # About (placeholder)
-            if "about" in self.views:
-                self.set_current_view("about")
+        if key == ord("3"):  # Alerts
+            if "alerts" in self.views:
+                self.set_current_view("alerts")
+            return True
+
+        if key == ord("4"):  # Settings
+            if "settings" in self.views:
+                self.set_current_view("settings")
             return True
 
         # Let the current view handle the input

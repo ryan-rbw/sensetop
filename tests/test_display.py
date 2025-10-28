@@ -262,7 +262,7 @@ class TestTUIViewNavigation:
 
         view1 = MockView("dashboard", color_manager)
         view2 = MockView("graphs", color_manager)
-        view3 = MockView("about", color_manager)
+        view3 = MockView("alerts", color_manager)
 
         tui.register_view(view1)
         tui.register_view(view2)
@@ -277,7 +277,7 @@ class TestTUIViewNavigation:
         tui.handle_input(ord("2"))
         assert tui.current_view == view2
 
-        # Press '3' to switch to about
+        # Press '3' to switch to alerts
         tui.handle_input(ord("3"))
         assert tui.current_view == view3
 

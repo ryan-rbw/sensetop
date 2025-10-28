@@ -12,7 +12,7 @@ from sensetop.data.history import DataHistoryManager
 from sensetop.data.thresholds import ThresholdManager
 from sensetop.display.colors import ColorManager, ColorScheme
 from sensetop.display.tui import TUI
-from sensetop.display.views import DashboardView, GraphView, HelpView
+from sensetop.display.views import AlertView, DashboardView, GraphView, HelpView, SettingsView
 from sensetop.sensors.environmental import EnvironmentalSensor
 from sensetop.sensors.imu import IMUSensor
 from sensetop.sensors.system import SystemSensor
@@ -176,6 +176,22 @@ class SenseTopApp:
             app=self,
         )
         self.tui.register_view(graph_view)
+
+        # Create alert view
+        alert_view = AlertView(
+            name="alerts",
+            color_manager=self.tui.color_manager,
+            app=self,
+        )
+        self.tui.register_view(alert_view)
+
+        # Create settings view
+        settings_view = SettingsView(
+            name="settings",
+            color_manager=self.tui.color_manager,
+            app=self,
+        )
+        self.tui.register_view(settings_view)
 
         # Create help view
         help_view = HelpView(
