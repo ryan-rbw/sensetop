@@ -7,9 +7,10 @@ import time
 from typing import Dict, List, Optional
 
 from sensetop.config import Config
+from sensetop.data.history import DataHistoryManager
 from sensetop.display.colors import ColorManager, ColorScheme
 from sensetop.display.tui import TUI
-from sensetop.display.views import DashboardView, HelpView
+from sensetop.display.views import DashboardView, GraphView, HelpView
 from sensetop.sensors.environmental import EnvironmentalSensor
 from sensetop.sensors.imu import IMUSensor
 from sensetop.sensors.system import SystemSensor
@@ -41,6 +42,9 @@ class SenseTopApp:
         # Sensors
         self.sensors: Dict[str, any] = {}
         self._initialize_sensors()
+
+        # Data history manager
+        self.data_history = DataHistoryManager(buffer_capacity=self.config.buffer_size)
 
         # Control flags
         self.running = False
@@ -114,10 +118,24 @@ class SenseTopApp:
                     try:
                         reading = sensor.read()
                         sensor_data[sensor_name] = reading
+
+                        # Store readings in data history
+                        if sensor_name == "imu":
+                            self.data_history.add_reading("accel_x", reading.value.accel_x)
+                            self.data_history.add_reading("accel_y", reading.value.accel_y)
+                            self.data_history.add_reading("accel_z", reading.value.accel_z)
+                        elif sensor_name == "environmental":
+                            self.data_history.add_reading("temperature", reading.value.temperature)
+                            self.data_history.add_reading("humidity", reading.value.humidity)
+                            self.data_history.add_reading("pressure", reading.value.pressure)
+                        elif sensor_name == "system":
+                            self.data_history.add_reading("cpu_temperature", reading.value.cpu_temp)
+                            self.data_history.add_reading(
+                                "memory_percent", reading.value.memory_percent
+                            )
+
                     except Exception as e:
                         self.logger.error(f"Error reading {sensor_name}: {e}")
-
-                # TODO: Store sensor data for display
 
                 # Sleep until next read
                 time.sleep(self.config.sensor_interval / 1000.0)
@@ -137,6 +155,14 @@ class SenseTopApp:
             app=self,
         )
         self.tui.register_view(dashboard)
+
+        # Create graph view
+        graph_view = GraphView(
+            name="graphs",
+            color_manager=self.tui.color_manager,
+            app=self,
+        )
+        self.tui.register_view(graph_view)
 
         # Create help view
         help_view = HelpView(

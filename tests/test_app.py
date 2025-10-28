@@ -1,7 +1,8 @@
 """Unit tests for application components."""
 
+from unittest.mock import MagicMock, Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
 
 from sensetop.app import SenseTopApp
 from sensetop.config import Config
@@ -53,9 +54,9 @@ class TestSenseTopAppInit:
 
     def test_app_initialization_with_defaults(self):
         """Test app initialization with default config."""
-        with patch('sensetop.app.IMUSensor'):
-            with patch('sensetop.app.EnvironmentalSensor'):
-                with patch('sensetop.app.SystemSensor'):
+        with patch("sensetop.app.IMUSensor"):
+            with patch("sensetop.app.EnvironmentalSensor"):
+                with patch("sensetop.app.SystemSensor"):
                     app = SenseTopApp(Config(use_mock=True))
                     assert app.config is not None
                     assert app.tui is not None
@@ -65,9 +66,9 @@ class TestSenseTopAppInit:
     def test_app_initialization_with_custom_config(self):
         """Test app initialization with custom config."""
         config = Config(theme="light", refresh_rate=1000, use_mock=True)
-        with patch('sensetop.app.IMUSensor'):
-            with patch('sensetop.app.EnvironmentalSensor'):
-                with patch('sensetop.app.SystemSensor'):
+        with patch("sensetop.app.IMUSensor"):
+            with patch("sensetop.app.EnvironmentalSensor"):
+                with patch("sensetop.app.SystemSensor"):
                     app = SenseTopApp(config)
                     assert app.config.theme == "light"
                     assert app.config.refresh_rate == 1000
@@ -75,20 +76,20 @@ class TestSenseTopAppInit:
 
     def test_app_sensors_initialized(self):
         """Test that sensors are initialized."""
-        with patch('sensetop.app.IMUSensor') as mock_imu:
-            with patch('sensetop.app.EnvironmentalSensor') as mock_env:
-                with patch('sensetop.app.SystemSensor') as mock_sys:
+        with patch("sensetop.app.IMUSensor") as mock_imu:
+            with patch("sensetop.app.EnvironmentalSensor") as mock_env:
+                with patch("sensetop.app.SystemSensor") as mock_sys:
                     mock_imu.return_value = Mock()
                     mock_env.return_value = Mock()
                     mock_sys.return_value = Mock()
-                    
+
                     app = SenseTopApp(Config(use_mock=True))
-                    
+
                     # Verify sensors were created
                     mock_imu.assert_called()
                     mock_env.assert_called()
                     mock_sys.assert_called()
-                    
+
                     # Verify sensors are in the sensors dict
                     assert "imu" in app.sensors
                     assert "environmental" in app.sensors
@@ -97,9 +98,9 @@ class TestSenseTopAppInit:
     def test_app_color_scheme_selection(self):
         """Test color scheme selection based on config."""
         config = Config(theme="dark", use_mock=True)
-        with patch('sensetop.app.IMUSensor'):
-            with patch('sensetop.app.EnvironmentalSensor'):
-                with patch('sensetop.app.SystemSensor'):
+        with patch("sensetop.app.IMUSensor"):
+            with patch("sensetop.app.EnvironmentalSensor"):
+                with patch("sensetop.app.SystemSensor"):
                     app = SenseTopApp(config)
                     assert app.tui.color_manager is not None
 
@@ -109,9 +110,9 @@ class TestSenseTopAppUI:
 
     def test_app_ui_setup(self):
         """Test that UI views are registered."""
-        with patch('sensetop.app.IMUSensor'):
-            with patch('sensetop.app.EnvironmentalSensor'):
-                with patch('sensetop.app.SystemSensor'):
+        with patch("sensetop.app.IMUSensor"):
+            with patch("sensetop.app.EnvironmentalSensor"):
+                with patch("sensetop.app.SystemSensor"):
                     app = SenseTopApp(Config(use_mock=True))
 
                     # Setup UI without initializing curses
@@ -128,22 +129,22 @@ class TestSenseTopAppShutdown:
 
     def test_app_shutdown(self):
         """Test application shutdown."""
-        with patch('sensetop.app.IMUSensor') as mock_imu:
-            with patch('sensetop.app.EnvironmentalSensor') as mock_env:
-                with patch('sensetop.app.SystemSensor') as mock_sys:
+        with patch("sensetop.app.IMUSensor") as mock_imu:
+            with patch("sensetop.app.EnvironmentalSensor") as mock_env:
+                with patch("sensetop.app.SystemSensor") as mock_sys:
                     mock_imu_inst = Mock()
                     mock_env_inst = Mock()
                     mock_sys_inst = Mock()
-                    
+
                     mock_imu.return_value = mock_imu_inst
                     mock_env.return_value = mock_env_inst
                     mock_sys.return_value = mock_sys_inst
-                    
+
                     app = SenseTopApp(Config(use_mock=True))
                     app.running = True
-                    
+
                     app.shutdown()
-                    
+
                     assert app.running is False
                     mock_imu_inst.shutdown.assert_called()
                     mock_env_inst.shutdown.assert_called()

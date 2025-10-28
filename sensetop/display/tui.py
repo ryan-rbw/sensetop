@@ -138,9 +138,9 @@ class TUI:
                 self.set_current_view("dashboard")
             return True
 
-        if key == ord("2"):  # Settings (placeholder)
-            if "settings" in self.views:
-                self.set_current_view("settings")
+        if key == ord("2"):  # Graphs
+            if "graphs" in self.views:
+                self.set_current_view("graphs")
             return True
 
         if key == ord("3"):  # About (placeholder)

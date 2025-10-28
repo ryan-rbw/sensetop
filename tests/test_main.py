@@ -1,7 +1,7 @@
 """Tests for application main entry point."""
 
 import sys
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
 
 from sensetop.main import main
 
@@ -11,7 +11,7 @@ class TestMain:
 
     def test_main_success(self):
         """Test main function runs successfully."""
-        with patch('sensetop.main.SenseTopApp') as mock_app_class:
+        with patch("sensetop.main.SenseTopApp") as mock_app_class:
             mock_app = Mock()
             mock_app_class.return_value = mock_app
             mock_app.run = Mock()
@@ -26,7 +26,7 @@ class TestMain:
 
     def test_main_keyboard_interrupt(self):
         """Test main function handles keyboard interrupt."""
-        with patch('sensetop.main.SenseTopApp') as mock_app_class:
+        with patch("sensetop.main.SenseTopApp") as mock_app_class:
             mock_app = Mock()
             mock_app_class.return_value = mock_app
             mock_app.run.side_effect = KeyboardInterrupt()
@@ -39,7 +39,7 @@ class TestMain:
 
     def test_main_general_exception(self):
         """Test main function handles general exceptions."""
-        with patch('sensetop.main.SenseTopApp') as mock_app_class:
+        with patch("sensetop.main.SenseTopApp") as mock_app_class:
             mock_app_class.side_effect = Exception("Test error")
 
             result = main()
@@ -48,7 +48,7 @@ class TestMain:
 
     def test_main_exception_during_shutdown(self):
         """Test main function handles exceptions during shutdown."""
-        with patch('sensetop.main.SenseTopApp') as mock_app_class:
+        with patch("sensetop.main.SenseTopApp") as mock_app_class:
             mock_app = Mock()
             mock_app_class.return_value = mock_app
             mock_app.run = Mock()

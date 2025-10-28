@@ -4,6 +4,7 @@ import curses
 from typing import TYPE_CHECKING, Callable, Optional
 
 from sensetop.display.colors import ColorManager, ColorPair
+from sensetop.display.graphs import GraphRenderer, create_trend_indicator
 from sensetop.display.tui import UIView
 
 if TYPE_CHECKING:
@@ -358,8 +359,8 @@ class HelpView(UIView):
             "",
             " Navigation ",
             "  1          Switch to Dashboard",
-            "  2          Switch to Settings (TODO)",
-            "  3          Switch to About (TODO)",
+            "  2          Switch to Graphs (Historical Trends)",
+            "  3          Switch to Settings (TODO)",
             "",
             " General Controls ",
             "  h / ?      Show this help screen",
@@ -369,10 +370,17 @@ class HelpView(UIView):
             " Dashboard Controls ",
             "  (View updates automatically every 500ms)",
             "",
+            " Graph Controls ",
+            "  ↑/↓ or j/k  Navigate between graphs",
+            "  Enter       Show detailed graph",
+            "",
             " Display Indicators ",
             "  [OK]       Status is normal",
             "  [WARNING]  Values approaching limits",
             "  [CRITICAL] Values exceed safe thresholds",
+            "  ↑          Trending upward",
+            "  →          Flat/stable",
+            "  ↓          Trending downward",
             "",
             " Thresholds ",
             "  Temperature:    0-50°C (OK), outside = WARNING",
@@ -489,4 +497,197 @@ class HelpView(UIView):
         if key != -1:
             # Signal to return to dashboard (handled by app)
             return False
+        return True
+
+
+class GraphView(UIView):
+    """View showing historical data trends and sparklines."""
+
+    def __init__(
+        self,
+        name: str,
+        color_manager: ColorManager,
+        app: "SenseTopApp",
+    ) -> None:
+        """Initialize graph view.
+
+        Args:
+            name: View name.
+            color_manager: Color manager instance.
+            app: Reference to main application.
+        """
+        super().__init__(name, color_manager)
+        self.app = app
+        self.selected_graph = 0  # Currently selected sensor graph
+
+    def draw(self, stdscr: "curses._CursesWindow") -> None:
+        """Draw the graph view with trend sparklines.
+
+        Args:
+            stdscr: Curses window object.
+        """
+        if stdscr is None:
+            return
+
+        try:
+            height, width = stdscr.getmaxyx()
+
+            # Draw header
+            self._draw_header(stdscr, width)
+
+            # Draw graph section
+            self._draw_graphs(stdscr, width, height, start_y=3)
+
+            # Draw footer
+            self._draw_footer(stdscr, height, width)
+
+        except curses.error:
+            pass
+
+    def _draw_header(self, stdscr: "curses._CursesWindow", width: int) -> None:
+        """Draw the header section."""
+        title = " SenseTop - Historical Trends "
+        y = 0
+
+        # Draw border
+        stdscr.addstr(
+            y,
+            0,
+            "═" * width,
+            self.color_manager.get_attr(ColorPair.BORDER),
+        )
+
+        # Draw title
+        x = (width - len(title)) // 2
+        stdscr.addstr(
+            y + 1,
+            x,
+            title,
+            self.color_manager.get_attr(ColorPair.HEADER),
+        )
+
+        # Draw border
+        stdscr.addstr(
+            y + 2,
+            0,
+            "═" * width,
+            self.color_manager.get_attr(ColorPair.BORDER),
+        )
+
+    def _draw_graphs(
+        self,
+        stdscr: "curses._CursesWindow",
+        width: int,
+        height: int,
+        start_y: int,
+    ) -> None:
+        """Draw sparkline graphs for each sensor type."""
+        if not hasattr(self.app, "data_history"):
+            # Data history not yet initialized
+            stdscr.addstr(
+                start_y + 1,
+                2,
+                "No historical data available yet",
+                self.color_manager.get_attr(ColorPair.VALUE),
+            )
+            return
+
+        y = start_y
+        sensors_data = [
+            ("Temperature", "temperature"),
+            ("Humidity", "humidity"),
+            ("Pressure", "pressure"),
+            ("CPU Temp", "cpu_temperature"),
+        ]
+
+        for label, sensor_name in sensors_data:
+            if y + 2 >= height - 2:
+                break
+
+            history = self.app.data_history.get_history(sensor_name)
+            if history and len(history) > 0:
+                stats = history.get_statistics()
+                trend = history.get_trend()
+                values = history.get_values_for_graph(count=width - 20)
+
+                # Draw sensor label and stats
+                sparkline = GraphRenderer.render_sparkline(values, width=width - 20)
+                trend_str = create_trend_indicator(trend)
+
+                label_str = f"{label:12} {trend_str} "
+                stats_str = (
+                    f"Latest: {stats.latest_value:7.2f}  "
+                    f"Min: {stats.min_value:7.2f}  "
+                    f"Max: {stats.max_value:7.2f}"
+                )
+
+                # Draw label and stats
+                try:
+                    stdscr.addstr(
+                        y,
+                        2,
+                        label_str,
+                        self.color_manager.get_attr(ColorPair.LABEL),
+                    )
+                    stdscr.addstr(
+                        y,
+                        len(label_str) + 2,
+                        sparkline,
+                        self.color_manager.get_attr(ColorPair.VALUE),
+                    )
+                    stdscr.addstr(
+                        y + 1,
+                        2,
+                        stats_str[: width - 4],
+                        self.color_manager.get_attr(ColorPair.VALUE),
+                    )
+                except curses.error:
+                    pass
+
+                y += 2
+
+    def _draw_footer(self, stdscr: "curses._CursesWindow", height: int, width: int) -> None:
+        """Draw the footer section."""
+        footer = " ↑↓: Select  Enter: Details  1: Dashboard  q: Quit "
+        y = height - 2
+
+        # Draw border
+        stdscr.addstr(
+            y,
+            0,
+            "═" * width,
+            self.color_manager.get_attr(ColorPair.BORDER),
+        )
+
+        # Draw footer text
+        x = max(0, (width - len(footer)) // 2)
+        footer_text = footer[: width - 2]
+        stdscr.addstr(
+            y + 1,
+            max(1, x),
+            footer_text,
+            self.color_manager.get_attr(ColorPair.FOOTER),
+        )
+
+    def handle_input(self, key: int) -> bool:
+        """Handle keyboard input for graph view.
+
+        Args:
+            key: The keyboard key code.
+
+        Returns:
+            True if handled, False otherwise.
+        """
+        # Arrow keys for navigation (if needed)
+        if key == curses.KEY_UP or key == ord("k"):
+            self.selected_graph = max(0, self.selected_graph - 1)
+            return True
+        elif key == curses.KEY_DOWN or key == ord("j"):
+            self.selected_graph += 1
+            return True
+
+        # Return to dashboard on unsupported keys
+        if key != -1 and key not in [ord("k"), ord("j")]:
+            return False
+
         return True
