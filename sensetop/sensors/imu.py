@@ -8,7 +8,7 @@ Handles 9-DOF IMU data collection from the LSM9DS1 chip:
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 from sensetop.sensors.base import Sensor, SensorReading, SensorStatus
 
@@ -216,7 +216,7 @@ class IMUSensor(Sensor):
     @staticmethod
     def _calculate_orientation(
         accel_x: float, accel_y: float, accel_z: float
-    ) -> tuple[float, float, float]:
+    ) -> Tuple[float, float, float]:
         """Calculate orientation angles from accelerometer data.
 
         Uses simple arctan-based calculation (not a full IMU fusion algorithm).
