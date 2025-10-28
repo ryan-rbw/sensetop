@@ -128,12 +128,32 @@ class TUI:
             return False
 
         if key == ord("h") or key == ord("?"):  # Help
-            # TODO: Show help
+            if "help" in self.views:
+                self.set_current_view("help")
+            return True
+
+        # View switching with numeric keys
+        if key == ord("1"):  # Dashboard
+            if "dashboard" in self.views:
+                self.set_current_view("dashboard")
+            return True
+
+        if key == ord("2"):  # Settings (placeholder)
+            if "settings" in self.views:
+                self.set_current_view("settings")
+            return True
+
+        if key == ord("3"):  # About (placeholder)
+            if "about" in self.views:
+                self.set_current_view("about")
             return True
 
         # Let the current view handle the input
         if self.current_view:
-            self.current_view.handle_input(key)
+            result = self.current_view.handle_input(key)
+            # If view returns False, try to return to dashboard
+            if not result and "dashboard" in self.views:
+                self.set_current_view("dashboard")
 
         return True
 

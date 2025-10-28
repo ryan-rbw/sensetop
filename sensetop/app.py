@@ -9,7 +9,7 @@ from typing import Dict, List, Optional
 from sensetop.config import Config
 from sensetop.display.colors import ColorManager, ColorScheme
 from sensetop.display.tui import TUI
-from sensetop.display.views import DashboardView
+from sensetop.display.views import DashboardView, HelpView
 from sensetop.sensors.environmental import EnvironmentalSensor
 from sensetop.sensors.imu import IMUSensor
 from sensetop.sensors.system import SystemSensor
@@ -141,6 +141,15 @@ class SenseTopApp:
             app=self,
         )
         self.tui.register_view(dashboard)
+
+        # Create help view
+        help_view = HelpView(
+            name="help",
+            color_manager=self.tui.color_manager,
+        )
+        self.tui.register_view(help_view)
+
+        # Set dashboard as the starting view
         self.tui.set_current_view("dashboard")
 
     def run(self) -> None:

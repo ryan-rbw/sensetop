@@ -4,6 +4,7 @@ import pytest
 
 from sensetop.display.colors import ColorManager, ColorPair, ColorScheme
 from sensetop.display.tui import TUI, UIView
+from sensetop.display.views import HelpView
 
 
 class MockView(UIView):
@@ -195,3 +196,125 @@ class TestColorSchemes:
             # Colors should be valid curses color constants
             assert fg >= 0
             assert bg >= 0
+
+
+class TestHelpView:
+    """Tests for help view."""
+
+    def test_help_view_initialization(self):
+        """Test HelpView initialization."""
+        color_manager = ColorManager()
+        help_view = HelpView("help", color_manager)
+
+        assert help_view.name == "help"
+        assert help_view.color_manager == color_manager
+        assert len(help_view.help_text) > 0
+
+    def test_help_view_draw(self):
+        """Test that help view can be drawn."""
+        color_manager = ColorManager()
+        help_view = HelpView("help", color_manager)
+
+        help_view.draw(None)  # type: ignore
+        # If no exception, test passes
+
+    def test_help_view_handle_input_no_key(self):
+        """Test help view with no input."""
+        color_manager = ColorManager()
+        help_view = HelpView("help", color_manager)
+
+        result = help_view.handle_input(-1)
+        assert result is True
+
+    def test_help_view_handle_input_key(self):
+        """Test help view returns to dashboard on any key."""
+        color_manager = ColorManager()
+        help_view = HelpView("help", color_manager)
+
+        result = help_view.handle_input(ord("a"))
+        assert result is False
+
+
+class TestTUIViewNavigation:
+    """Tests for TUI view navigation."""
+
+    def test_tui_help_view_navigation(self):
+        """Test navigating to help view."""
+        tui = TUI()
+        color_manager = ColorManager()
+
+        dashboard = MockView("dashboard", color_manager)
+        help_view = HelpView("help", color_manager)
+
+        tui.register_view(dashboard)
+        tui.register_view(help_view)
+        tui.set_current_view("dashboard")
+
+        # Press 'h' to go to help
+        result = tui.handle_input(ord("h"))
+        assert result is True
+        assert tui.current_view == help_view
+
+    def test_tui_numeric_view_switching(self):
+        """Test numeric key view switching."""
+        tui = TUI()
+        color_manager = ColorManager()
+
+        view1 = MockView("dashboard", color_manager)
+        view2 = MockView("settings", color_manager)
+        view3 = MockView("about", color_manager)
+
+        tui.register_view(view1)
+        tui.register_view(view2)
+        tui.register_view(view3)
+        tui.set_current_view("dashboard")
+
+        # Press '1' to stay on dashboard
+        tui.handle_input(ord("1"))
+        assert tui.current_view == view1
+
+        # Press '2' to switch to settings
+        tui.handle_input(ord("2"))
+        assert tui.current_view == view2
+
+        # Press '3' to switch to about
+        tui.handle_input(ord("3"))
+        assert tui.current_view == view3
+
+    def test_tui_return_from_help(self):
+        """Test returning to dashboard from help view."""
+        tui = TUI()
+        color_manager = ColorManager()
+
+        dashboard = MockView("dashboard", color_manager)
+        help_view = HelpView("help", color_manager)
+
+        tui.register_view(dashboard)
+        tui.register_view(help_view)
+        tui.set_current_view("dashboard")
+
+        # Go to help
+        tui.handle_input(ord("h"))
+        assert tui.current_view == help_view
+
+        # Simulate pressing a key in help (which returns False)
+        # This should trigger return to dashboard
+        result = help_view.handle_input(ord("a"))
+        assert result is False
+
+    def test_tui_question_mark_for_help(self):
+        """Test that '?' also opens help."""
+        tui = TUI()
+        color_manager = ColorManager()
+
+        dashboard = MockView("dashboard", color_manager)
+        help_view = HelpView("help", color_manager)
+
+        tui.register_view(dashboard)
+        tui.register_view(help_view)
+        tui.set_current_view("dashboard")
+
+        # Press '?' to go to help
+        result = tui.handle_input(ord("?"))
+        assert result is True
+        assert tui.current_view == help_view

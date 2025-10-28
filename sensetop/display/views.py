@@ -1,7 +1,7 @@
 """Display views for the TUI."""
 
 import curses
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Callable, Optional
 
 from sensetop.display.colors import ColorManager, ColorPair
 from sensetop.display.tui import UIView
@@ -339,5 +339,160 @@ class DashboardView(UIView):
         Returns:
             True if handled, False otherwise.
         """
-        # TODO: Implement keyboard handling
+        # Numeric keys for view switching are handled at TUI level
+        # but we can handle view-specific shortcuts here
+        if key == ord("r"):  # Refresh (already refreshing, but could force)
+            return True
         return False
+
+
+class HelpView(UIView):
+    """Help view showing keyboard shortcuts and commands."""
+
+    def __init__(self, name: str, color_manager: ColorManager) -> None:
+        """Initialize help view.
+
+        Args:
+            name: View name.
+            color_manager: Color manager instance.
+        """
+        super().__init__(name, color_manager)
+        self.help_text = [
+            " SenseTop - Keyboard Shortcuts & Help ",
+            "",
+            " Navigation ",
+            "  1          Switch to Dashboard",
+            "  2          Switch to Settings (TODO)",
+            "  3          Switch to About (TODO)",
+            "",
+            " General Controls ",
+            "  h / ?      Show this help screen",
+            "  q / ESC    Quit the application",
+            "  r          Refresh current view",
+            "",
+            " Dashboard Controls ",
+            "  (View updates automatically every 500ms)",
+            "",
+            " Display Indicators ",
+            "  [OK]       Status is normal",
+            "  [WARNING]  Values approaching limits",
+            "  [CRITICAL] Values exceed safe thresholds",
+            "",
+            " Thresholds ",
+            "  Temperature:    0-50°C (OK), outside = WARNING",
+            "  Humidity:       30-70% (OK), outside = WARNING",
+            "  CPU Temp:       <60°C (OK), 60-80°C (WARN), >80°C (CRIT)",
+            "  Memory Usage:   <75% (OK), 75-90% (WARN), >90% (CRIT)",
+            "",
+            " Project Information ",
+            "  GitHub: https://github.com/ryan-rbw/sensetop",
+            "  Version: 0.1.0-dev",
+            "",
+            " Press any key to return to dashboard ",
+        ]
+
+    def draw(self, stdscr: "curses._CursesWindow") -> None:
+        """Draw the help view.
+
+        Args:
+            stdscr: Curses window object.
+        """
+        if stdscr is None:
+            return
+
+        try:
+            height, width = stdscr.getmaxyx()
+
+            # Draw border and title
+            self._draw_header(stdscr, width)
+
+            # Draw help text
+            for i, line in enumerate(self.help_text):
+                if i + 3 >= height - 1:
+                    break  # Stop if we run out of space
+
+                if line.startswith(" ") and line.endswith(" "):
+                    # Section headers
+                    attr = self.color_manager.get_attr(ColorPair.HEADER)
+                else:
+                    attr = self.color_manager.get_attr(ColorPair.VALUE)
+
+                try:
+                    stdscr.addstr(i + 3, 2, line[: width - 4], attr)
+                except curses.error:
+                    pass
+
+            # Draw footer
+            self._draw_footer(stdscr, height, width)
+
+        except curses.error:
+            pass
+
+    def _draw_header(self, stdscr: "curses._CursesWindow", width: int) -> None:
+        """Draw the header section."""
+        title = " SenseTop - Help "
+        y = 0
+
+        # Draw border
+        stdscr.addstr(
+            y,
+            0,
+            "═" * width,
+            self.color_manager.get_attr(ColorPair.BORDER),
+        )
+
+        # Draw title
+        x = (width - len(title)) // 2
+        stdscr.addstr(
+            y + 1,
+            x,
+            title,
+            self.color_manager.get_attr(ColorPair.HEADER),
+        )
+
+        # Draw border
+        stdscr.addstr(
+            y + 2,
+            0,
+            "═" * width,
+            self.color_manager.get_attr(ColorPair.BORDER),
+        )
+
+    def _draw_footer(
+        self, stdscr: "curses._CursesWindow", height: int, width: int
+    ) -> None:
+        """Draw the footer section."""
+        footer = " Press any key to return to dashboard "
+        y = height - 2
+
+        # Draw border
+        stdscr.addstr(
+            y,
+            0,
+            "═" * width,
+            self.color_manager.get_attr(ColorPair.BORDER),
+        )
+
+        # Draw footer text
+        x = (width - len(footer)) // 2
+        stdscr.addstr(
+            y + 1,
+            x,
+            footer,
+            self.color_manager.get_attr(ColorPair.FOOTER),
+        )
+
+    def handle_input(self, key: int) -> bool:
+        """Handle keyboard input for help view.
+
+        Args:
+            key: The keyboard key code.
+
+        Returns:
+            True if handled, False otherwise.
+        """
+        # Any key returns to dashboard
+        if key != -1:
+            # Signal to return to dashboard (handled by app)
+            return False
+        return True
