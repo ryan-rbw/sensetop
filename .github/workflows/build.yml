@@ -44,7 +44,7 @@ jobs:
         python -c "import sensetop; print(f'✅ sensetop {sensetop.__version__} installed successfully')"
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: distributions
         path: dist/
