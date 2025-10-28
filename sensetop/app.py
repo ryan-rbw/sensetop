@@ -1,0 +1,216 @@
+"""Main SenseTop application class."""
+
+import curses
+import logging
+import threading
+import time
+from typing import Dict, List, Optional
+
+from sensetop.config import Config
+from sensetop.display.colors import ColorManager, ColorScheme
+from sensetop.display.tui import TUI
+from sensetop.display.views import DashboardView
+from sensetop.sensors.environmental import EnvironmentalSensor
+from sensetop.sensors.imu import IMUSensor
+from sensetop.sensors.system import SystemSensor
+
+
+class SenseTopApp:
+    """Main SenseTop application class.
+
+    Manages the application lifecycle, sensor data collection, and UI rendering.
+    """
+
+    def __init__(self, config: Optional[Config] = None) -> None:
+        """Initialize the SenseTop application.
+
+        Args:
+            config: Configuration object. If None, uses default config.
+        """
+        self.config = config or Config()
+        self.logger = self._setup_logging()
+        self.logger.info("Initializing SenseTop application")
+
+        # UI and display
+        color_scheme = self._get_color_scheme()
+        self.tui = TUI(
+            color_scheme=color_scheme,
+            refresh_rate=self.config.refresh_rate,
+        )
+
+        # Sensors
+        self.sensors: Dict[str, any] = {}
+        self._initialize_sensors()
+
+        # Control flags
+        self.running = False
+        self.sensor_thread: Optional[threading.Thread] = None
+
+    def _setup_logging(self) -> logging.Logger:
+        """Set up logging configuration.
+
+        Returns:
+            Logger instance.
+        """
+        logger = logging.getLogger("sensetop")
+        logger.setLevel(logging.DEBUG)
+
+        # Create file handler
+        handler = logging.FileHandler(self.config.log_file)
+        handler.setLevel(logging.DEBUG)
+
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
+        handler.setFormatter(formatter)
+
+        logger.addHandler(handler)
+        return logger
+
+    def _get_color_scheme(self) -> Optional[ColorScheme]:
+        """Get the color scheme based on configuration.
+
+        Returns:
+            ColorScheme instance or None for default.
+        """
+        schemes = ColorManager.get_available_schemes()
+        theme = self.config.theme
+
+        if theme in schemes:
+            return schemes[theme]
+
+        self.logger.warning(f"Unknown theme: {theme}, using default")
+        return None
+
+    def _initialize_sensors(self) -> None:
+        """Initialize all sensors."""
+        try:
+            # IMU sensor
+            self.sensors["imu"] = IMUSensor(use_mock=self.config.use_mock)
+            self.sensors["imu"].initialize()
+
+            # Environmental sensor
+            self.sensors["environmental"] = EnvironmentalSensor(
+                use_mock=self.config.use_mock
+            )
+            self.sensors["environmental"].initialize()
+
+            # System sensor
+            self.sensors["system"] = SystemSensor(use_mock=self.config.use_mock)
+            self.sensors["system"].initialize()
+
+            self.logger.info("All sensors initialized successfully")
+
+        except Exception as e:
+            self.logger.error(f"Failed to initialize sensors: {e}")
+            raise
+
+    def _sensor_read_loop(self) -> None:
+        """Continuously read sensor data in a background thread."""
+        self.logger.info("Sensor read loop started")
+
+        while self.running:
+            try:
+                # Read from all sensors
+                sensor_data = {}
+
+                for sensor_name, sensor in self.sensors.items():
+                    try:
+                        reading = sensor.read()
+                        sensor_data[sensor_name] = reading
+                    except Exception as e:
+                        self.logger.error(f"Error reading {sensor_name}: {e}")
+
+                # TODO: Store sensor data for display
+
+                # Sleep until next read
+                time.sleep(self.config.sensor_interval / 1000.0)
+
+            except Exception as e:
+                self.logger.error(f"Error in sensor read loop: {e}")
+                time.sleep(1)  # Prevent busy loop on error
+
+        self.logger.info("Sensor read loop stopped")
+
+    def _setup_ui(self) -> None:
+        """Set up the user interface views."""
+        # Create dashboard view
+        dashboard = DashboardView(
+            name="dashboard",
+            color_manager=self.tui.color_manager,
+            app=self,
+        )
+        self.tui.register_view(dashboard)
+        self.tui.set_current_view("dashboard")
+
+    def run(self) -> None:
+        """Run the application.
+
+        This is the main entry point that starts the UI event loop.
+        """
+        self.running = True
+        self.logger.info("Starting SenseTop application")
+
+        # Start sensor read thread
+        self.sensor_thread = threading.Thread(
+            target=self._sensor_read_loop,
+            daemon=True,
+        )
+        self.sensor_thread.start()
+
+        try:
+            # Run the curses application
+            curses.wrapper(self._run_curses)
+        except Exception as e:
+            self.logger.error(f"Application error: {e}", exc_info=True)
+            raise
+        finally:
+            self.shutdown()
+
+    def _run_curses(self, stdscr: "curses._CursesWindow") -> None:
+        """Run the application within curses context.
+
+        Args:
+            stdscr: The curses window object.
+        """
+        try:
+            # Initialize TUI
+            self.tui.initialize(stdscr)
+            self._setup_ui()
+
+            # Main event loop
+            while self.running:
+                # Draw current view
+                self.tui.draw()
+
+                # Handle input
+                key = stdscr.getch()
+                if not self.tui.handle_input(key):
+                    self.running = False
+
+        except KeyboardInterrupt:
+            self.logger.info("Application interrupted by user")
+            self.running = False
+
+    def shutdown(self) -> None:
+        """Shutdown the application and clean up resources."""
+        self.logger.info("Shutting down SenseTop application")
+
+        # Stop running
+        self.running = False
+
+        # Wait for sensor thread
+        if self.sensor_thread is not None:
+            self.sensor_thread.join(timeout=2.0)
+
+        # Shutdown TUI
+        self.tui.shutdown()
+
+        # Shutdown sensors
+        for sensor in self.sensors.values():
+            try:
+                sensor.shutdown()
+            except Exception as e:
+                self.logger.error(f"Error shutting down sensor: {e}")
+
+        self.logger.info("Application shutdown complete")
