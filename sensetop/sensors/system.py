@@ -291,11 +291,7 @@ class SystemSensor(Sensor):
             return False
 
         # Check memory values are sensible
-        if (
-            value.memory_total <= 0
-            or value.memory_used < 0
-            or value.memory_available < 0
-        ):
+        if value.memory_total <= 0 or value.memory_used < 0 or value.memory_available < 0:
             return False
 
         # Memory used should not exceed total

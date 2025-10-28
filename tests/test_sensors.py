@@ -193,9 +193,7 @@ class TestEnvironmentalSensor:
             (20.0, 50.0, 2000.0, False),  # Pressure too high
         ],
     )
-    def test_environmental_validation_ranges(
-        self, temp, humidity, pressure, valid
-    ):
+    def test_environmental_validation_ranges(self, temp, humidity, pressure, valid):
         """Test environmental sensor validation."""
         sensor = EnvironmentalSensor(use_mock=True)
         sensor.initialize()

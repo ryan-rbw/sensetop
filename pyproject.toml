@@ -35,8 +35,6 @@ target-version = ["py38", "py39", "py310", "py311"]
 [tool.isort]
 profile = "black"
 line_length = 100
-multi_line_mode = 3
-include_trailing_comma = true
 
 [tool.pylint]
 max-line-length = 100

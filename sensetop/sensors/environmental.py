@@ -96,8 +96,7 @@ class EnvironmentalSensor(Sensor):
                 self._initialized = True
             except ImportError:
                 raise RuntimeError(
-                    "sense-hat library not installed. "
-                    "Install with: pip install sense-hat"
+                    "sense-hat library not installed. " "Install with: pip install sense-hat"
                 )
             except Exception as e:
                 raise RuntimeError(f"Failed to initialize environmental sensors: {e}")
@@ -233,9 +232,7 @@ class EnvironmentalSensor(Sensor):
             return 0.0
 
         # Barometric formula
-        altitude = 44330 * (
-            1.0 - math.pow(pressure / self.SEA_LEVEL_PRESSURE, 1.0 / 5.255)
-        )
+        altitude = 44330 * (1.0 - math.pow(pressure / self.SEA_LEVEL_PRESSURE, 1.0 / 5.255))
 
         return altitude
 

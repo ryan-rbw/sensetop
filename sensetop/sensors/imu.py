@@ -99,8 +99,7 @@ class IMUSensor(Sensor):
                 self._initialized = True
             except ImportError:
                 raise RuntimeError(
-                    "sense-hat library not installed. "
-                    "Install with: pip install sense-hat"
+                    "sense-hat library not installed. " "Install with: pip install sense-hat"
                 )
             except Exception as e:
                 raise RuntimeError(f"Failed to initialize IMU: {e}")
@@ -291,11 +290,7 @@ class IMUSensor(Sensor):
             return False
 
         # Check angles are reasonable (-180 to 180)
-        if (
-            abs(value.pitch) > 180
-            or abs(value.roll) > 180
-            or abs(value.yaw) > 180
-        ):
+        if abs(value.pitch) > 180 or abs(value.roll) > 180 or abs(value.yaw) > 180:
             return False
 
         return True
