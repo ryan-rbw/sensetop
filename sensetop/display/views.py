@@ -82,9 +82,7 @@ class DashboardView(UIView):
             self.color_manager.get_attr(ColorPair.BORDER),
         )
 
-    def _draw_imu_section(
-        self, stdscr: "curses._CursesWindow", width: int, start_y: int
-    ) -> None:
+    def _draw_imu_section(self, stdscr: "curses._CursesWindow", width: int, start_y: int) -> None:
         """Draw IMU sensor data section."""
         # Section title
         stdscr.addstr(
@@ -274,9 +272,7 @@ class DashboardView(UIView):
                     self.color_manager.get_attr(ColorPair.STATUS_ERROR),
                 )
 
-    def _draw_footer(
-        self, stdscr: "curses._CursesWindow", height: int, width: int
-    ) -> None:
+    def _draw_footer(self, stdscr: "curses._CursesWindow", height: int, width: int) -> None:
         """Draw the footer section."""
         footer = " q: Quit  h: Help  1-3: Views "
         y = height - 2
@@ -458,9 +454,7 @@ class HelpView(UIView):
             self.color_manager.get_attr(ColorPair.BORDER),
         )
 
-    def _draw_footer(
-        self, stdscr: "curses._CursesWindow", height: int, width: int
-    ) -> None:
+    def _draw_footer(self, stdscr: "curses._CursesWindow", height: int, width: int) -> None:
         """Draw the footer section."""
         footer = " Press any key to return to dashboard "
         y = height - 2

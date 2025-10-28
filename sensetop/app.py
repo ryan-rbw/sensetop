@@ -59,9 +59,7 @@ class SenseTopApp:
         handler = logging.FileHandler(self.config.log_file)
         handler.setLevel(logging.DEBUG)
 
-        formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        )
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
         handler.setFormatter(formatter)
 
         logger.addHandler(handler)
@@ -90,9 +88,7 @@ class SenseTopApp:
             self.sensors["imu"].initialize()
 
             # Environmental sensor
-            self.sensors["environmental"] = EnvironmentalSensor(
-                use_mock=self.config.use_mock
-            )
+            self.sensors["environmental"] = EnvironmentalSensor(use_mock=self.config.use_mock)
             self.sensors["environmental"].initialize()
 
             # System sensor
