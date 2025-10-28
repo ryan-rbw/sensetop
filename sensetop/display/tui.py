@@ -2,7 +2,7 @@
 
 import curses
 from abc import ABC, abstractmethod
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 from sensetop.display.colors import ColorManager, ColorScheme
 
@@ -59,7 +59,7 @@ class TUI:
         self.stdscr: Optional["curses._CursesWindow"] = None
         self.running = False
         self.current_view: Optional[UIView] = None
-        self.views: dict[str, UIView] = {}
+        self.views: Dict[str, UIView] = {}
 
     def register_view(self, view: UIView) -> None:
         """Register a UI view.
