@@ -4,7 +4,7 @@ import curses
 import logging
 import threading
 import time
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from sensetop.config import Config
 from sensetop.data.alarms import AlarmManager
@@ -42,7 +42,7 @@ class SenseTopApp:
         )
 
         # Sensors
-        self.sensors: Dict[str, any] = {}
+        self.sensors: Dict[str, Any] = {}
         self._initialize_sensors()
 
         # Data history manager

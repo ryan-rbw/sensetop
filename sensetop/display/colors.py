@@ -3,7 +3,7 @@
 import curses
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 
 class ColorPair(Enum):
@@ -29,7 +29,7 @@ class ColorScheme:
 
     name: str
     description: str
-    colors: Dict[ColorPair, tuple[int, int]]  # (foreground, background)
+    colors: Dict[ColorPair, Tuple[int, int]]  # (foreground, background)
 
 
 class ColorManager:

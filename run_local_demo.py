@@ -29,6 +29,7 @@ Keyboard Controls:
 import signal
 import sys
 from pathlib import Path
+from typing import Optional
 
 # Add the project root to the path
 project_root = Path(__file__).parent
@@ -38,7 +39,7 @@ from sensetop.app import SenseTopApp
 from sensetop.config import Config
 
 # Global app reference for signal handling
-_app: "SenseTopApp | None" = None
+_app: Optional["SenseTopApp"] = None
 
 
 def signal_handler(signum: int, frame) -> None:
