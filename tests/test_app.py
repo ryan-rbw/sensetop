@@ -173,31 +173,49 @@ class TestSenseTopAppSensorLoop:
 
                     # Mock sensor readings
                     imu_data = IMUData(
-                        accel_x=1.0, accel_y=0.0, accel_z=0.0,
-                        gyro_x=0.0, gyro_y=0.0, gyro_z=0.0,
-                        mag_x=20.0, mag_y=30.0, mag_z=40.0
+                        accel_x=1.0,
+                        accel_y=0.0,
+                        accel_z=0.0,
+                        gyro_x=0.0,
+                        gyro_y=0.0,
+                        gyro_z=0.0,
+                        mag_x=20.0,
+                        mag_y=30.0,
+                        mag_z=40.0,
                     )
                     env_data = EnvironmentalData(
-                        temperature=22.5, humidity=45.0, pressure=1013.25,
-                        dew_point=11.5, altitude=0.0
+                        temperature=22.5,
+                        humidity=45.0,
+                        pressure=1013.25,
+                        dew_point=11.5,
+                        altitude=0.0,
                     )
                     sys_data = SystemMetrics(
-                        cpu_temp=45.5, memory_total=4000000000,
-                        memory_used=1600000000, memory_available=2400000000,
-                        uptime=timedelta(hours=10), cpu_count=4
+                        cpu_temp=45.5,
+                        memory_total=4000000000,
+                        memory_used=1600000000,
+                        memory_available=2400000000,
+                        uptime=timedelta(hours=10),
+                        cpu_count=4,
                     )
 
                     mock_imu_inst.read.return_value = SensorReading(
-                        timestamp=datetime.now(), value=imu_data,
-                        status=SensorStatus.OK, unit="mixed"
+                        timestamp=datetime.now(),
+                        value=imu_data,
+                        status=SensorStatus.OK,
+                        unit="mixed",
                     )
                     mock_env_inst.read.return_value = SensorReading(
-                        timestamp=datetime.now(), value=env_data,
-                        status=SensorStatus.OK, unit="mixed"
+                        timestamp=datetime.now(),
+                        value=env_data,
+                        status=SensorStatus.OK,
+                        unit="mixed",
                     )
                     mock_sys_inst.read.return_value = SensorReading(
-                        timestamp=datetime.now(), value=sys_data,
-                        status=SensorStatus.OK, unit="mixed"
+                        timestamp=datetime.now(),
+                        value=sys_data,
+                        status=SensorStatus.OK,
+                        unit="mixed",
                     )
 
                     mock_imu.return_value = mock_imu_inst
@@ -209,11 +227,13 @@ class TestSenseTopAppSensorLoop:
 
                     # Run one iteration of the sensor loop
                     import threading
+
                     thread = threading.Thread(target=app._sensor_read_loop, daemon=True)
                     thread.start()
 
                     # Let it run briefly
                     import time
+
                     time.sleep(0.2)
 
                     # Stop the loop
@@ -255,32 +275,47 @@ class TestSenseTopAppSensorLoop:
                         humidity=45.0,
                         pressure=1013.25,
                         dew_point=11.5,
-                        altitude=0.0
+                        altitude=0.0,
                     )
 
                     imu_data = IMUData(
-                        accel_x=0.0, accel_y=0.0, accel_z=1.0,
-                        gyro_x=0.0, gyro_y=0.0, gyro_z=0.0,
-                        mag_x=20.0, mag_y=30.0, mag_z=40.0
+                        accel_x=0.0,
+                        accel_y=0.0,
+                        accel_z=1.0,
+                        gyro_x=0.0,
+                        gyro_y=0.0,
+                        gyro_z=0.0,
+                        mag_x=20.0,
+                        mag_y=30.0,
+                        mag_z=40.0,
                     )
 
                     sys_data = SystemMetrics(
-                        cpu_temp=45.5, memory_total=4000000000,
-                        memory_used=1600000000, memory_available=2400000000,
-                        uptime=timedelta(hours=10), cpu_count=4
+                        cpu_temp=45.5,
+                        memory_total=4000000000,
+                        memory_used=1600000000,
+                        memory_available=2400000000,
+                        uptime=timedelta(hours=10),
+                        cpu_count=4,
                     )
 
                     mock_imu_inst.read.return_value = SensorReading(
-                        timestamp=datetime.now(), value=imu_data,
-                        status=SensorStatus.OK, unit="mixed"
+                        timestamp=datetime.now(),
+                        value=imu_data,
+                        status=SensorStatus.OK,
+                        unit="mixed",
                     )
                     mock_env_inst.read.return_value = SensorReading(
-                        timestamp=datetime.now(), value=env_data,
-                        status=SensorStatus.OK, unit="mixed"
+                        timestamp=datetime.now(),
+                        value=env_data,
+                        status=SensorStatus.OK,
+                        unit="mixed",
                     )
                     mock_sys_inst.read.return_value = SensorReading(
-                        timestamp=datetime.now(), value=sys_data,
-                        status=SensorStatus.OK, unit="mixed"
+                        timestamp=datetime.now(),
+                        value=sys_data,
+                        status=SensorStatus.OK,
+                        unit="mixed",
                     )
 
                     mock_imu.return_value = mock_imu_inst
@@ -291,13 +326,14 @@ class TestSenseTopAppSensorLoop:
 
                     # Set a threshold for temperature
                     from sensetop.data.thresholds import SensorThreshold
+
                     threshold = SensorThreshold(
                         sensor_name="temperature",
                         min_value=15.0,
                         max_value=30.0,
                         critical_min=10.0,
                         critical_max=35.0,
-                        enabled=True
+                        enabled=True,
                     )
                     app.threshold_manager.set_threshold(threshold)
 
@@ -306,6 +342,7 @@ class TestSenseTopAppSensorLoop:
                     # Run sensor loop briefly
                     import threading
                     import time
+
                     thread = threading.Thread(target=app._sensor_read_loop, daemon=True)
                     thread.start()
                     time.sleep(0.2)
@@ -344,6 +381,7 @@ class TestSenseTopAppSensorLoop:
                     # Run sensor loop briefly - should not crash
                     import threading
                     import time
+
                     thread = threading.Thread(target=app._sensor_read_loop, daemon=True)
                     thread.start()
                     time.sleep(0.2)
