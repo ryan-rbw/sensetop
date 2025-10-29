@@ -135,6 +135,6 @@ Thumbs.db
 
 # Project specific
 *.csv
-data/
+/data/
 logs/
 config.local.yaml
