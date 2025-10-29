@@ -78,10 +78,11 @@ jobs:
         draft: false
         prerelease: false
 
-    - name: Publish to PyPI
+    - name: Publish to TestPyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         password: ${{ secrets.PYPI_API_TOKEN }}
+        repository_url: https://test.pypi.org/legacy/
 
     - name: Verify package installation
       run: |
