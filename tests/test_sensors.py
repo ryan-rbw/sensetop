@@ -121,6 +121,97 @@ class TestIMUSensor:
         )
         assert mock_imu_sensor.validate_reading(imu_data) == valid
 
+    def test_imu_read_without_initialization(self):
+        """Test reading without initialization raises error."""
+        sensor = IMUSensor(use_mock=True)
+        # Don't initialize
+        with pytest.raises(RuntimeError, match="not initialized"):
+            sensor.read()
+
+    def test_imu_orientation_calculation(self):
+        """Test orientation angle calculations."""
+        sensor = IMUSensor(use_mock=True)
+
+        # Test with different accelerometer values
+        pitch, roll, yaw = sensor._calculate_orientation(0.0, 0.0, 1.0)
+        assert pitch == 0.0
+        assert roll == 0.0
+        assert yaw == 0.0
+
+        # Test with tilted values
+        pitch, roll, yaw = sensor._calculate_orientation(1.0, 0.0, 0.0)
+        assert abs(roll) > 0  # Should have non-zero roll
+        assert yaw == 0.0  # Yaw always 0 from accel only
+
+    def test_imu_gyro_out_of_range(self):
+        """Test gyroscope out of range validation."""
+        sensor = IMUSensor(use_mock=True)
+        sensor.initialize()
+
+        imu_data = IMUData(
+            accel_x=0.0,
+            accel_y=0.0,
+            accel_z=1.0,
+            gyro_x=3000.0,  # Out of range
+            gyro_y=0.0,
+            gyro_z=0.0,
+            mag_x=20.0,
+            mag_y=30.0,
+            mag_z=40.0,
+        )
+        assert sensor.validate_reading(imu_data) is False
+
+    def test_imu_invalid_angles(self):
+        """Test validation with invalid angles."""
+        sensor = IMUSensor(use_mock=True)
+        sensor.initialize()
+
+        imu_data = IMUData(
+            accel_x=0.0,
+            accel_y=0.0,
+            accel_z=1.0,
+            gyro_x=0.0,
+            gyro_y=0.0,
+            gyro_z=0.0,
+            mag_x=20.0,
+            mag_y=30.0,
+            mag_z=40.0,
+            pitch=200.0,  # Invalid angle
+            roll=0.0,
+            yaw=0.0,
+        )
+        assert sensor.validate_reading(imu_data) is False
+
+    def test_imu_validation_wrong_type(self):
+        """Test validation with wrong data type."""
+        sensor = IMUSensor(use_mock=True)
+        sensor.initialize()
+
+        assert sensor.validate_reading("not an IMUData") is False
+        assert sensor.validate_reading(42) is False
+
+    def test_imu_data_repr(self):
+        """Test IMUData string representation."""
+        imu_data = IMUData(
+            accel_x=1.0,
+            accel_y=2.0,
+            accel_z=3.0,
+            gyro_x=10.0,
+            gyro_y=20.0,
+            gyro_z=30.0,
+            mag_x=40.0,
+            mag_y=50.0,
+            mag_z=60.0,
+            pitch=5.0,
+            roll=10.0,
+            yaw=15.0,
+        )
+        repr_str = repr(imu_data)
+        assert "IMUData" in repr_str
+        assert "accel" in repr_str
+        assert "gyro" in repr_str
+        assert "mag" in repr_str
+
 
 class TestEnvironmentalSensor:
     """Tests for environmental sensor module."""
@@ -207,6 +298,85 @@ class TestEnvironmentalSensor:
         )
         assert sensor.validate_reading(env_data) == valid
 
+    def test_environmental_read_without_initialization(self):
+        """Test reading without initialization raises error."""
+        sensor = EnvironmentalSensor(use_mock=True)
+        with pytest.raises(RuntimeError, match="not initialized"):
+            sensor.read()
+
+    def test_dew_point_zero_humidity(self):
+        """Test dew point calculation with zero humidity."""
+        sensor = EnvironmentalSensor(use_mock=True)
+
+        # With zero humidity, dew point should equal temperature
+        dew_point = sensor._calculate_dew_point(20.0, 0.0)
+        assert dew_point == 20.0
+
+    def test_dew_point_high_humidity(self):
+        """Test dew point calculation with high humidity."""
+        sensor = EnvironmentalSensor(use_mock=True)
+
+        # With 100% humidity, dew point should be close to temperature
+        dew_point = sensor._calculate_dew_point(20.0, 100.0)
+        assert abs(dew_point - 20.0) < 1.0
+
+    def test_altitude_various_pressures(self):
+        """Test altitude calculation at various pressures."""
+        sensor = EnvironmentalSensor(use_mock=True)
+        sensor.initialize()
+
+        # High pressure (below sea level) should give negative altitude
+        altitude_high = sensor._calculate_altitude(1050.0)
+        assert altitude_high < 0
+
+        # Low pressure (high altitude) should give positive altitude
+        altitude_low = sensor._calculate_altitude(900.0)
+        assert altitude_low > 0
+
+    def test_altitude_zero_pressure(self):
+        """Test altitude calculation with zero pressure."""
+        sensor = EnvironmentalSensor(use_mock=True)
+        sensor.initialize()
+
+        altitude = sensor._calculate_altitude(0.0)
+        assert altitude == 0.0
+
+    def test_environmental_validation_wrong_type(self):
+        """Test validation with wrong data type."""
+        sensor = EnvironmentalSensor(use_mock=True)
+        sensor.initialize()
+
+        assert sensor.validate_reading("not environmental data") is False
+        assert sensor.validate_reading(123) is False
+
+    def test_environmental_dew_point_validation(self):
+        """Test validation fails when dew point exceeds temperature."""
+        sensor = EnvironmentalSensor(use_mock=True)
+        sensor.initialize()
+
+        env_data = EnvironmentalData(
+            temperature=20.0,
+            humidity=50.0,
+            pressure=1013.25,
+            dew_point=25.0,  # Dew point higher than temperature (invalid)
+            altitude=0.0,
+        )
+        assert sensor.validate_reading(env_data) is False
+
+    def test_environmental_data_repr(self):
+        """Test EnvironmentalData string representation."""
+        env_data = EnvironmentalData(
+            temperature=22.5,
+            humidity=45.0,
+            pressure=1013.25,
+            dew_point=11.5,
+            altitude=100.0,
+        )
+        repr_str = repr(env_data)
+        assert "EnvironmentalData" in repr_str
+        assert "22.5" in repr_str
+        assert "45.0" in repr_str
+
 
 class TestSystemSensor:
     """Tests for system metrics sensor module."""
@@ -286,6 +456,99 @@ class TestSystemSensor:
             cpu_count=4,
         )
         assert sensor.validate_reading(metrics) == valid
+
+    def test_system_read_without_initialization(self):
+        """Test reading without initialization raises error."""
+        sensor = SystemSensor(use_mock=True)
+        with pytest.raises(RuntimeError, match="not initialized"):
+            sensor.read()
+
+    def test_memory_percent_zero_total(self):
+        """Test memory percentage with zero total memory."""
+        from datetime import timedelta
+
+        metrics = SystemMetrics(
+            cpu_temp=45.0,
+            memory_total=0,  # Zero total
+            memory_used=0,
+            memory_available=0,
+            uptime=timedelta(hours=1),
+            cpu_count=4,
+        )
+        assert metrics.memory_percent == 0.0
+
+    def test_memory_percent_calculation(self):
+        """Test memory percentage calculation."""
+        from datetime import timedelta
+
+        metrics = SystemMetrics(
+            cpu_temp=45.0,
+            memory_total=1000,
+            memory_used=250,
+            memory_available=750,
+            uptime=timedelta(hours=1),
+            cpu_count=4,
+        )
+        assert metrics.memory_percent == 25.0
+
+    def test_system_validation_memory_exceeds_total(self):
+        """Test validation fails when memory used exceeds total."""
+        from datetime import timedelta
+
+        sensor = SystemSensor(use_mock=True)
+        sensor.initialize()
+
+        metrics = SystemMetrics(
+            cpu_temp=45.0,
+            memory_total=1000,
+            memory_used=1500,  # Exceeds total
+            memory_available=0,
+            uptime=timedelta(hours=1),
+            cpu_count=4,
+        )
+        assert sensor.validate_reading(metrics) is False
+
+    def test_system_validation_negative_uptime(self):
+        """Test validation fails with negative uptime."""
+        from datetime import timedelta
+
+        sensor = SystemSensor(use_mock=True)
+        sensor.initialize()
+
+        metrics = SystemMetrics(
+            cpu_temp=45.0,
+            memory_total=1000,
+            memory_used=500,
+            memory_available=500,
+            uptime=timedelta(hours=-1),  # Negative
+            cpu_count=4,
+        )
+        assert sensor.validate_reading(metrics) is False
+
+    def test_system_validation_wrong_type(self):
+        """Test validation with wrong data type."""
+        sensor = SystemSensor(use_mock=True)
+        sensor.initialize()
+
+        assert sensor.validate_reading("not system metrics") is False
+        assert sensor.validate_reading(42) is False
+
+    def test_system_metrics_repr(self):
+        """Test SystemMetrics string representation."""
+        from datetime import timedelta
+
+        metrics = SystemMetrics(
+            cpu_temp=45.5,
+            memory_total=4294967296,
+            memory_used=1610612736,
+            memory_available=2684354560,
+            uptime=timedelta(hours=10, minutes=30),
+            cpu_count=4,
+        )
+        repr_str = repr(metrics)
+        assert "SystemMetrics" in repr_str
+        assert "45.5" in repr_str
+        assert "cpu_temp" in repr_str
 
 
 class TestSensorShutdown:

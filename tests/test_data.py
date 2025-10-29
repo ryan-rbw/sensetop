@@ -111,6 +111,59 @@ class TestCircularBuffer:
         with pytest.raises(ValueError):
             CircularBuffer(capacity=-1)
 
+    def test_buffer_get_latest_larger_than_buffer(self):
+        """Test get_latest with count larger than buffer size."""
+        buf = CircularBuffer(capacity=5)
+        buf.append(1.0)
+        buf.append(2.0)
+        buf.append(3.0)
+
+        # Request more than available
+        latest = buf.get_latest(count=10)
+        assert len(latest) == 3
+        assert [e.value for e in latest] == [1.0, 2.0, 3.0]
+
+    def test_buffer_get_oldest_larger_than_buffer(self):
+        """Test get_oldest with count larger than buffer size."""
+        buf = CircularBuffer(capacity=5)
+        buf.append(1.0)
+        buf.append(2.0)
+        buf.append(3.0)
+
+        # Request more than available
+        oldest = buf.get_oldest(count=10)
+        assert len(oldest) == 3
+        assert [e.value for e in oldest] == [1.0, 2.0, 3.0]
+
+    def test_buffer_get_with_negative_count(self):
+        """Test get_latest and get_oldest with negative count."""
+        buf = CircularBuffer(capacity=5)
+        buf.append(1.0)
+        buf.append(2.0)
+
+        assert buf.get_latest(count=-1) == []
+        assert buf.get_oldest(count=-1) == []
+        assert buf.get_latest(count=0) == []
+        assert buf.get_oldest(count=0) == []
+
+    def test_buffer_entry_repr(self):
+        """Test BufferEntry string representation."""
+        ts = datetime.now()
+        entry = BufferEntry(timestamp=ts, value=42.5)
+        repr_str = repr(entry)
+        assert "BufferEntry" in repr_str
+        assert "42.5" in repr_str
+
+    def test_buffer_repr(self):
+        """Test CircularBuffer string representation."""
+        buf = CircularBuffer(capacity=10)
+        buf.append(1.0)
+        buf.append(2.0)
+        repr_str = repr(buf)
+        assert "CircularBuffer" in repr_str
+        assert "capacity=10" in repr_str
+        assert "count=2" in repr_str
+
 
 class TestSensorHistory:
     """Tests for sensor history tracking."""
@@ -188,6 +241,68 @@ class TestSensorHistory:
         # Test with count limit
         values_limited = hist.get_values_for_graph(count=2)
         assert values_limited == [53.0, 54.0]
+
+    def test_history_statistics_single_point(self):
+        """Test statistics with single data point."""
+        hist = SensorHistory("temperature")
+        hist.add_reading(25.0)
+
+        stats = hist.get_statistics()
+        assert stats is not None
+        assert stats.min_value == 25.0
+        assert stats.max_value == 25.0
+        assert stats.avg_value == 25.0
+        assert stats.latest_value == 25.0
+        assert stats.sample_count == 1
+        assert stats.time_span == timedelta(0)
+
+    def test_history_trend_single_reading(self):
+        """Test trend detection with single reading."""
+        hist = SensorHistory("temperature")
+        hist.add_reading(20.0)
+
+        # With only one reading, trend should be flat
+        trend = hist.get_trend()
+        assert trend == "→"
+
+    def test_history_trend_zero_threshold(self):
+        """Test trend detection when first value is zero."""
+        hist = SensorHistory("temperature")
+        hist.add_reading(0.0)
+        hist.add_reading(0.0)
+        hist.add_reading(0.0)
+
+        trend = hist.get_trend()
+        assert trend == "→"
+
+    def test_history_clear(self):
+        """Test clearing history."""
+        hist = SensorHistory("temperature")
+        hist.add_reading(20.0)
+        hist.add_reading(21.0)
+        assert len(hist) == 2
+
+        hist.clear()
+        assert len(hist) == 0
+        assert hist.get_statistics() is None
+
+    def test_history_repr(self):
+        """Test SensorHistory string representation."""
+        hist = SensorHistory("temperature")
+        hist.add_reading(20.0)
+        hist.add_reading(21.0)
+
+        repr_str = repr(hist)
+        assert "SensorHistory" in repr_str
+        assert "temperature" in repr_str
+        assert "readings=2" in repr_str
+
+    def test_history_repr_empty(self):
+        """Test SensorHistory string representation when empty."""
+        hist = SensorHistory("temperature")
+        repr_str = repr(hist)
+        assert "SensorHistory" in repr_str
+        assert "readings=0" in repr_str
 
 
 class TestDataHistoryManager:
@@ -324,6 +439,81 @@ class TestDataExporter:
 
             exports = exporter.list_exports()
             assert len(exports) == 1
+
+    def test_export_with_custom_filename(self):
+        """Test exporting with custom filename."""
+        hist = SensorHistory("temperature")
+        hist.add_reading(20.0)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            exporter = DataExporter(output_dir=tmpdir)
+            filepath = exporter.export_to_csv(hist, filename="custom_export.csv")
+
+            assert filepath.exists()
+            assert filepath.name == "custom_export.csv"
+
+    def test_export_csv_timestamp_format(self):
+        """Test CSV timestamp is in ISO format."""
+        hist = SensorHistory("temperature")
+        ts = datetime(2024, 1, 15, 10, 30, 45)
+        hist.add_reading(20.0, timestamp=ts)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            exporter = DataExporter(output_dir=tmpdir)
+            filepath = exporter.export_to_csv(hist)
+
+            with open(filepath) as f:
+                lines = f.readlines()
+                # Check that timestamp is in ISO format
+                assert "2024-01-15" in lines[1]
+
+    def test_export_all_empty_manager(self):
+        """Test export_all with no sensor data."""
+        manager = DataHistoryManager()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            exporter = DataExporter(output_dir=tmpdir)
+
+            with pytest.raises(ValueError, match="No sensor data to export"):
+                exporter.export_all_to_csv(manager)
+
+    def test_export_summary_empty_manager(self):
+        """Test export_summary with no sensor data."""
+        manager = DataHistoryManager()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            exporter = DataExporter(output_dir=tmpdir)
+
+            with pytest.raises(ValueError, match="No sensor data to export"):
+                exporter.export_summary_csv(manager)
+
+    def test_export_all_with_suffix(self):
+        """Test export_all with custom suffix."""
+        manager = DataHistoryManager()
+        manager.add_reading("temperature", 20.0)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            exporter = DataExporter(output_dir=tmpdir)
+            results = exporter.export_all_to_csv(manager, suffix="backup")
+
+            # Check that suffix is in filename
+            filepath = results["temperature"]
+            assert "backup" in filepath.name
+
+    def test_get_export_directory(self):
+        """Test getting export directory."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            exporter = DataExporter(output_dir=tmpdir)
+            export_dir = exporter.get_export_directory()
+            assert export_dir == Path(tmpdir)
+
+    def test_exporter_repr(self):
+        """Test DataExporter string representation."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            exporter = DataExporter(output_dir=tmpdir)
+            repr_str = repr(exporter)
+            assert "DataExporter" in repr_str
+            assert tmpdir in repr_str
 
 
 class TestGraphRenderer:
