@@ -26,6 +26,7 @@ Keyboard Controls:
     r - Reset to defaults (in settings view)
 """
 
+import signal
 import sys
 from pathlib import Path
 
@@ -36,9 +37,21 @@ sys.path.insert(0, str(project_root))
 from sensetop.app import SenseTopApp
 from sensetop.config import Config
 
+# Global app reference for signal handling
+_app: "SenseTopApp | None" = None
+
+
+def signal_handler(signum: int, frame) -> None:
+    """Handle signals for clean shutdown."""
+    global _app
+    if _app is not None:
+        _app.running = False
+
 
 def main() -> int:
     """Run the SenseTop app with mocked sensors."""
+    global _app
+
     print("=" * 70)
     print("SenseTop Local Demo - Using Mocked Sensors")
     print("=" * 70)
@@ -56,7 +69,10 @@ def main() -> int:
     print("Starting application...")
     print()
 
-    app: SenseTopApp | None = None
+    # Register signal handlers for clean shutdown
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
     try:
         # Create config with mock sensors enabled
         config = Config(
@@ -68,8 +84,8 @@ def main() -> int:
         )
 
         # Create and run the application
-        app = SenseTopApp(config=config)
-        app.run()
+        _app = SenseTopApp(config=config)
+        _app.run()
         return 0
 
     except KeyboardInterrupt:
@@ -77,18 +93,22 @@ def main() -> int:
         return 130
 
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        import traceback
-        traceback.print_exc()
+        # Don't print error for curses errors in non-interactive environments
+        # (these are expected when not in a proper terminal)
+        error_msg = str(e)
+        if "cbreak" not in error_msg and "nocbreak" not in error_msg:
+            print(f"Error: {e}", file=sys.stderr)
+            import traceback
+            traceback.print_exc()
         return 1
 
     finally:
         # Ensure proper cleanup
-        if app is not None:
+        if _app is not None:
             try:
-                app.shutdown()
+                _app.shutdown()
             except Exception as e:
-                print(f"Error during shutdown: {e}", file=sys.stderr)
+                pass  # Suppress shutdown errors
 
 
 if __name__ == "__main__":

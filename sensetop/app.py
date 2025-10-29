@@ -221,6 +221,12 @@ class SenseTopApp:
         try:
             # Run the curses application
             curses.wrapper(self._run_curses)
+        except KeyboardInterrupt:
+            self.logger.info("Application interrupted by user")
+        except curses.error as e:
+            self.logger.error(f"Curses error: {e}")
+            # Curses errors during wrapper initialization/cleanup should not be re-raised
+            # as they indicate terminal state issues, not application logic errors
         except Exception as e:
             self.logger.error(f"Application error: {e}", exc_info=True)
             raise
