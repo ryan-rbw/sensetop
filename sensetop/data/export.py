@@ -69,9 +69,7 @@ class DataExporter:
 
                 # Write data rows
                 for entry in entries:
-                    writer.writerow(
-                        [entry.timestamp.isoformat(), f"{entry.value:.4f}"]
-                    )
+                    writer.writerow([entry.timestamp.isoformat(), f"{entry.value:.4f}"])
 
             return filepath
 

@@ -70,9 +70,7 @@ class AlarmManager:
         Returns:
             AlarmEvent if threshold violated, None otherwise.
         """
-        status, violated = self.threshold_manager.check_value(
-            sensor_name, value
-        )
+        status, violated = self.threshold_manager.check_value(sensor_name, value)
 
         if not violated:
             # Clear active alarm for this sensor if it was violated before
@@ -157,11 +155,7 @@ class AlarmManager:
         Returns:
             List of unacknowledged alarm events.
         """
-        return [
-            alarm
-            for alarm in self._active_alarms.values()
-            if not alarm.acknowledged
-        ]
+        return [alarm for alarm in self._active_alarms.values() if not alarm.acknowledged]
 
     def get_alarm_history(self, limit: Optional[int] = None) -> List[AlarmEvent]:
         """Get alarm history.
@@ -185,9 +179,7 @@ class AlarmManager:
         Returns:
             Number of alarms in history for this sensor.
         """
-        return sum(
-            1 for alarm in self._alarm_history if alarm.sensor_name == sensor_name
-        )
+        return sum(1 for alarm in self._alarm_history if alarm.sensor_name == sensor_name)
 
     def clear_history(self) -> None:
         """Clear all alarm history."""
@@ -200,8 +192,7 @@ class AlarmManager:
     def has_critical_alarms(self) -> bool:
         """Check if there are any critical alarms."""
         return any(
-            alarm.severity == AlarmSeverity.CRITICAL
-            for alarm in self._active_alarms.values()
+            alarm.severity == AlarmSeverity.CRITICAL for alarm in self._active_alarms.values()
         )
 
     def __repr__(self) -> str:

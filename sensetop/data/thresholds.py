@@ -26,20 +26,17 @@ class SensorThreshold:
         """
         if self.min_value > self.max_value:
             raise ValueError(
-                f"min_value ({self.min_value}) must be <= "
-                f"max_value ({self.max_value})"
+                f"min_value ({self.min_value}) must be <= " f"max_value ({self.max_value})"
             )
 
         if self.critical_min is not None and self.critical_min > self.min_value:
             raise ValueError(
-                f"critical_min ({self.critical_min}) must be <= "
-                f"min_value ({self.min_value})"
+                f"critical_min ({self.critical_min}) must be <= " f"min_value ({self.min_value})"
             )
 
         if self.critical_max is not None and self.critical_max < self.max_value:
             raise ValueError(
-                f"critical_max ({self.critical_max}) must be >= "
-                f"max_value ({self.max_value})"
+                f"critical_max ({self.critical_max}) must be >= " f"max_value ({self.max_value})"
             )
 
     def check_value(self, value: float) -> Tuple[str, bool]:

@@ -33,9 +33,7 @@ class SensorHistory:
     Tracks all readings with timestamps and provides statistical analysis.
     """
 
-    def __init__(
-        self, sensor_name: str, buffer_capacity: int = 120
-    ) -> None:
+    def __init__(self, sensor_name: str, buffer_capacity: int = 120) -> None:
         """Initialize sensor history.
 
         Args:
@@ -169,9 +167,7 @@ class DataHistoryManager:
             timestamp: Timestamp for the reading (uses current time if None).
         """
         if sensor_name not in self._histories:
-            self._histories[sensor_name] = SensorHistory(
-                sensor_name, self.buffer_capacity
-            )
+            self._histories[sensor_name] = SensorHistory(sensor_name, self.buffer_capacity)
 
         self._histories[sensor_name].add_reading(value, timestamp)
 
