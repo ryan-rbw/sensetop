@@ -120,7 +120,7 @@ class Sensor(ABC):
         """
         self._error_count += 1
         self._last_error = error
-        if self._error_rate > 50:
+        if self.error_rate > 50:
             self._status = SensorStatus.ERROR
         else:
             self._status = SensorStatus.WARNING
