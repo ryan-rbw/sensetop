@@ -135,17 +135,27 @@ class SenseTopApp:
                             self.data_history.add_reading("humidity", reading.value.humidity)
                             self.data_history.add_reading("pressure", reading.value.pressure)
                             # Check thresholds
-                            self.alarm_manager.check_and_create_alarm("temperature", reading.value.temperature)
-                            self.alarm_manager.check_and_create_alarm("humidity", reading.value.humidity)
-                            self.alarm_manager.check_and_create_alarm("pressure", reading.value.pressure)
+                            self.alarm_manager.check_and_create_alarm(
+                                "temperature", reading.value.temperature
+                            )
+                            self.alarm_manager.check_and_create_alarm(
+                                "humidity", reading.value.humidity
+                            )
+                            self.alarm_manager.check_and_create_alarm(
+                                "pressure", reading.value.pressure
+                            )
                         elif sensor_name == "system":
                             self.data_history.add_reading("cpu_temperature", reading.value.cpu_temp)
                             self.data_history.add_reading(
                                 "memory_percent", reading.value.memory_percent
                             )
                             # Check thresholds
-                            self.alarm_manager.check_and_create_alarm("cpu_temperature", reading.value.cpu_temp)
-                            self.alarm_manager.check_and_create_alarm("memory_percent", reading.value.memory_percent)
+                            self.alarm_manager.check_and_create_alarm(
+                                "cpu_temperature", reading.value.cpu_temp
+                            )
+                            self.alarm_manager.check_and_create_alarm(
+                                "memory_percent", reading.value.memory_percent
+                            )
 
                     except Exception as e:
                         self.logger.error(f"Error reading {sensor_name}: {e}")

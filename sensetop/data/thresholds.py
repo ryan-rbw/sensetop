@@ -1,10 +1,10 @@
 """Threshold management and violation tracking."""
 
+import json
 from copy import deepcopy
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Dict, Optional, Tuple
-import json
 
 
 @dataclass

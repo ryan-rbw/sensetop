@@ -797,7 +797,9 @@ class AlertView(UIView):
         warnings = len(active_alarms) - len(critical_alarms)
 
         # Draw summary line
-        summary = f"Total: {len(active_alarms)} | Critical: {len(critical_alarms)} | Warnings: {warnings}"
+        summary = (
+            f"Total: {len(active_alarms)} | Critical: {len(critical_alarms)} | Warnings: {warnings}"
+        )
         try:
             stdscr.addstr(
                 y,
@@ -960,7 +962,9 @@ class SettingsView(UIView):
             # Draw details for selected sensor
             if sensor_names:
                 selected_sensor = sensor_names[self.selected_sensor_idx % len(sensor_names)]
-                self._draw_threshold_details(stdscr, width, selected_sensor, thresholds[selected_sensor])
+                self._draw_threshold_details(
+                    stdscr, width, selected_sensor, thresholds[selected_sensor]
+                )
 
             # Draw footer
             self._draw_footer(stdscr, height, width)

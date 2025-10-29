@@ -31,26 +31,20 @@ class TestSensorThreshold:
         threshold.validate()  # Should not raise
 
         # Invalid: min > max
-        threshold_bad = SensorThreshold(
-            "temp", min_value=100.0, max_value=0.0
-        )
+        threshold_bad = SensorThreshold("temp", min_value=100.0, max_value=0.0)
         with pytest.raises(ValueError):
             threshold_bad.validate()
 
     def test_threshold_check_ok(self):
         """Test value check in OK range."""
-        threshold = SensorThreshold(
-            "temperature", min_value=0.0, max_value=50.0
-        )
+        threshold = SensorThreshold("temperature", min_value=0.0, max_value=50.0)
         status, violated = threshold.check_value(25.0)
         assert status == "ok"
         assert not violated
 
     def test_threshold_check_warning(self):
         """Test value check in warning range."""
-        threshold = SensorThreshold(
-            "temperature", min_value=0.0, max_value=50.0
-        )
+        threshold = SensorThreshold("temperature", min_value=0.0, max_value=50.0)
         status, violated = threshold.check_value(-10.0)
         assert status == "warning"
         assert violated
@@ -70,9 +64,7 @@ class TestSensorThreshold:
 
     def test_threshold_disabled(self):
         """Test that disabled threshold always returns OK."""
-        threshold = SensorThreshold(
-            "temperature", min_value=0.0, max_value=50.0, enabled=False
-        )
+        threshold = SensorThreshold("temperature", min_value=0.0, max_value=50.0, enabled=False)
         status, violated = threshold.check_value(100.0)
         assert status == "ok"
         assert not violated
@@ -84,17 +76,13 @@ class TestThresholdManager:
     def test_manager_creation(self):
         """Test manager initialization."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            manager = ThresholdManager(
-                config_file=str(Path(tmpdir) / "thresholds.json")
-            )
+            manager = ThresholdManager(config_file=str(Path(tmpdir) / "thresholds.json"))
             assert len(manager.get_all_thresholds()) > 0
 
     def test_manager_defaults(self):
         """Test default thresholds are loaded."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            manager = ThresholdManager(
-                config_file=str(Path(tmpdir) / "thresholds.json")
-            )
+            manager = ThresholdManager(config_file=str(Path(tmpdir) / "thresholds.json"))
             thresholds = manager.get_all_thresholds()
 
             assert "temperature" in thresholds
@@ -104,13 +92,9 @@ class TestThresholdManager:
     def test_set_threshold(self):
         """Test setting a threshold."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            manager = ThresholdManager(
-                config_file=str(Path(tmpdir) / "thresholds.json")
-            )
+            manager = ThresholdManager(config_file=str(Path(tmpdir) / "thresholds.json"))
 
-            new_threshold = SensorThreshold(
-                "custom_sensor", min_value=10.0, max_value=90.0
-            )
+            new_threshold = SensorThreshold("custom_sensor", min_value=10.0, max_value=90.0)
             manager.set_threshold(new_threshold)
 
             retrieved = manager.get_threshold("custom_sensor")
@@ -120,9 +104,7 @@ class TestThresholdManager:
     def test_check_value(self):
         """Test checking values through manager."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            manager = ThresholdManager(
-                config_file=str(Path(tmpdir) / "thresholds.json")
-            )
+            manager = ThresholdManager(config_file=str(Path(tmpdir) / "thresholds.json"))
 
             # Temperature should be OK at 20°C
             status, violated = manager.check_value("temperature", 20.0)
@@ -161,9 +143,7 @@ class TestThresholdManager:
     def test_reset_to_defaults(self):
         """Test resetting to defaults."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            manager = ThresholdManager(
-                config_file=str(Path(tmpdir) / "thresholds.json")
-            )
+            manager = ThresholdManager(config_file=str(Path(tmpdir) / "thresholds.json"))
 
             # Modify a threshold (keeping critical values valid: critical_min <= min_value, critical_max >= max_value)
             threshold = manager.get_threshold("temperature")
@@ -186,9 +166,7 @@ class TestThresholdManager:
     def test_enable_disable_sensor(self):
         """Test enabling/disabling sensor thresholds."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            manager = ThresholdManager(
-                config_file=str(Path(tmpdir) / "thresholds.json")
-            )
+            manager = ThresholdManager(config_file=str(Path(tmpdir) / "thresholds.json"))
 
             manager.disable_sensor("temperature")
             threshold = manager.get_threshold("temperature")
@@ -236,18 +214,14 @@ class TestAlarmManager:
     def test_alarm_manager_creation(self):
         """Test creating alarm manager."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            threshold_manager = ThresholdManager(
-                config_file=str(Path(tmpdir) / "thresholds.json")
-            )
+            threshold_manager = ThresholdManager(config_file=str(Path(tmpdir) / "thresholds.json"))
             alarm_manager = AlarmManager(threshold_manager)
             assert len(alarm_manager.get_active_alarms()) == 0
 
     def test_check_value_no_alarm(self):
         """Test checking value that doesn't violate threshold."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            threshold_manager = ThresholdManager(
-                config_file=str(Path(tmpdir) / "thresholds.json")
-            )
+            threshold_manager = ThresholdManager(config_file=str(Path(tmpdir) / "thresholds.json"))
             alarm_manager = AlarmManager(threshold_manager)
 
             alarm = alarm_manager.check_and_create_alarm("temperature", 25.0)
@@ -257,9 +231,7 @@ class TestAlarmManager:
     def test_check_value_creates_alarm(self):
         """Test checking value that violates threshold."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            threshold_manager = ThresholdManager(
-                config_file=str(Path(tmpdir) / "thresholds.json")
-            )
+            threshold_manager = ThresholdManager(config_file=str(Path(tmpdir) / "thresholds.json"))
             alarm_manager = AlarmManager(threshold_manager)
 
             alarm = alarm_manager.check_and_create_alarm("temperature", 85.0)
@@ -270,9 +242,7 @@ class TestAlarmManager:
     def test_acknowledge_alarm(self):
         """Test acknowledging an alarm."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            threshold_manager = ThresholdManager(
-                config_file=str(Path(tmpdir) / "thresholds.json")
-            )
+            threshold_manager = ThresholdManager(config_file=str(Path(tmpdir) / "thresholds.json"))
             alarm_manager = AlarmManager(threshold_manager)
 
             alarm_manager.check_and_create_alarm("temperature", 85.0)
@@ -285,9 +255,7 @@ class TestAlarmManager:
     def test_get_critical_alarms(self):
         """Test getting critical alarms."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            threshold_manager = ThresholdManager(
-                config_file=str(Path(tmpdir) / "thresholds.json")
-            )
+            threshold_manager = ThresholdManager(config_file=str(Path(tmpdir) / "thresholds.json"))
             alarm_manager = AlarmManager(threshold_manager)
 
             # Create a warning alarm (humidity: min=30, max=70; use 20 for warning)
@@ -302,9 +270,7 @@ class TestAlarmManager:
     def test_alarm_history(self):
         """Test alarm history tracking."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            threshold_manager = ThresholdManager(
-                config_file=str(Path(tmpdir) / "thresholds.json")
-            )
+            threshold_manager = ThresholdManager(config_file=str(Path(tmpdir) / "thresholds.json"))
             alarm_manager = AlarmManager(threshold_manager)
 
             alarm_manager.check_and_create_alarm("temperature", 85.0)
@@ -316,9 +282,7 @@ class TestAlarmManager:
     def test_alarm_history_limit(self):
         """Test getting limited alarm history."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            threshold_manager = ThresholdManager(
-                config_file=str(Path(tmpdir) / "thresholds.json")
-            )
+            threshold_manager = ThresholdManager(config_file=str(Path(tmpdir) / "thresholds.json"))
             alarm_manager = AlarmManager(threshold_manager)
 
             alarm_manager.check_and_create_alarm("temperature", 85.0)
@@ -331,9 +295,7 @@ class TestAlarmManager:
     def test_has_active_alarms(self):
         """Test checking if there are active alarms."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            threshold_manager = ThresholdManager(
-                config_file=str(Path(tmpdir) / "thresholds.json")
-            )
+            threshold_manager = ThresholdManager(config_file=str(Path(tmpdir) / "thresholds.json"))
             alarm_manager = AlarmManager(threshold_manager)
 
             assert not alarm_manager.has_active_alarms()
@@ -344,9 +306,7 @@ class TestAlarmManager:
     def test_has_critical_alarms(self):
         """Test checking if there are critical alarms."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            threshold_manager = ThresholdManager(
-                config_file=str(Path(tmpdir) / "thresholds.json")
-            )
+            threshold_manager = ThresholdManager(config_file=str(Path(tmpdir) / "thresholds.json"))
             alarm_manager = AlarmManager(threshold_manager)
 
             assert not alarm_manager.has_critical_alarms()
@@ -357,9 +317,7 @@ class TestAlarmManager:
     def test_acknowledge_all(self):
         """Test acknowledging all alarms."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            threshold_manager = ThresholdManager(
-                config_file=str(Path(tmpdir) / "thresholds.json")
-            )
+            threshold_manager = ThresholdManager(config_file=str(Path(tmpdir) / "thresholds.json"))
             alarm_manager = AlarmManager(threshold_manager)
 
             alarm_manager.check_and_create_alarm("temperature", 85.0)
