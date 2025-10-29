@@ -1,0 +1,27 @@
+# Include documentation files
+include README.md
+include LICENSE
+include SPEC.md
+include JOURNAL.md
+
+# Include configuration files
+include setup.py
+include setup.cfg
+include pyproject.toml
+include requirements.txt
+include requirements-dev.txt
+include Makefile
+
+# Include scripts
+recursive-include scripts *.py *.sh
+
+# Include GitHub workflows
+recursive-include .github *
+
+# Exclude unnecessary files
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude .pytest_cache
+global-exclude .mypy_cache
+global-exclude .coverage
+global-exclude htmlcov
