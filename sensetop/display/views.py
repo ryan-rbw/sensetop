@@ -605,8 +605,12 @@ class GraphView(UIView):
             ("CPU Temp", "cpu_temperature"),
         ]
 
+        # Calculate chart height based on available space
+        available_height = height - start_y - 3  # Leave room for footer
+        chart_height = max(3, min(5, available_height // len(sensors_data) - 2))
+
         for label, sensor_name in sensors_data:
-            if y + 2 >= height - 2:
+            if y + chart_height + 3 >= height - 2:
                 break
 
             history = self.app.data_history.get_history(sensor_name)
@@ -615,11 +619,9 @@ class GraphView(UIView):
                 trend = history.get_trend()
                 values = history.get_values_for_graph(count=width - 20)
 
-                # Draw sensor label and stats
-                sparkline = GraphRenderer.render_sparkline(values, width=width - 20)
+                # Draw sensor label with trend
                 trend_str = create_trend_indicator(trend)
-
-                label_str = f"{label:12} {trend_str} "
+                label_str = f"{label:12} {trend_str}"
                 stats_str = (
                     f"Latest: {stats.latest_value:7.2f}  "
                     f"Min: {stats.min_value:7.2f}  "
@@ -637,19 +639,30 @@ class GraphView(UIView):
                     stdscr.addstr(
                         y,
                         len(label_str) + 2,
-                        sparkline,
+                        stats_str[: width - len(label_str) - 4],
                         self.color_manager.get_attr(ColorPair.VALUE),
                     )
-                    stdscr.addstr(
-                        y + 1,
-                        2,
-                        stats_str[: width - 4],
-                        self.color_manager.get_attr(ColorPair.VALUE),
+
+                    # Draw bar chart (multi-line graph)
+                    bar_chart = GraphRenderer.render_bar_chart(
+                        values,
+                        height=chart_height,
+                        width=width - 4
                     )
+                    chart_lines = bar_chart.split('\n')
+                    for i, line in enumerate(chart_lines):
+                        if y + 1 + i < height - 2:
+                            stdscr.addstr(
+                                y + 1 + i,
+                                2,
+                                line,
+                                self.color_manager.get_attr(ColorPair.VALUE),
+                            )
+
                 except curses.error:
                     pass
 
-                y += 2
+                y += chart_height + 2  # Height of chart + spacing
 
     def _draw_footer(self, stdscr: "curses._CursesWindow", height: int, width: int) -> None:
         """Draw the footer section."""
@@ -857,9 +870,9 @@ class AlertView(UIView):
             if alarm.acknowledged:
                 attr = self.color_manager.get_attr(ColorPair.VALUE)
             elif alarm.severity.value == "critical":
-                attr = self.color_manager.get_attr(ColorPair.ERROR)
+                attr = self.color_manager.get_attr(ColorPair.STATUS_ERROR)
             else:
-                attr = self.color_manager.get_attr(ColorPair.WARNING)
+                attr = self.color_manager.get_attr(ColorPair.STATUS_WARNING)
 
             try:
                 display_text = sensor_info[: width - 4]
