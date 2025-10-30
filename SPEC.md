@@ -62,6 +62,92 @@ SenseTop is a real-time monitoring application for the Sense HAT module on Raspb
 - Customizable display layouts and themes
 - Help system and keyboard shortcuts display
 
+#### LED Matrix Display Control
+The Sense HAT features an 8×8 RGB LED matrix that can be controlled for visual feedback and information display. SenseTop provides an interactive LED control interface accessible from the main dashboard.
+
+- **LED Display Mode Selection**:
+  - Interactive cursor-based selection menu on dashboard
+  - Navigate modes with arrow keys (↑/↓)
+  - Activate selected mode with Enter key
+  - Return to sensor monitoring with Escape/q
+  - Current mode displayed on dashboard status
+
+- **Text Display Mode**:
+  - **Text Input**:
+    - User enters custom text string (max 100 characters)
+    - Text input dialog with live preview
+    - Support for alphanumeric characters, spaces, and basic punctuation
+  - **Scrolling Behavior**:
+    - Horizontal scrolling from right to left across the 8×8 matrix
+    - Configurable scroll speed (slow/medium/fast)
+    - Smooth character-by-character animation
+    - Continuous loop until mode changed
+  - **Color Options**:
+    - **Solid Color**: Select from predefined palette (red, green, blue, yellow, cyan, magenta, white)
+    - **Custom RGB**: Specify custom color (R, G, B values 0-255)
+    - **Rainbow Mode**: Text color cycles through spectrum as it scrolls
+    - **Gradient Mode**: Each character in different color from gradient
+  - **Display Properties**:
+    - 5×7 pixel font rendering (standard Sense HAT font)
+    - Configurable brightness (0-100%)
+    - Background color selection (default: black/off)
+
+- **Worm Animation Mode**:
+  - **Worm Properties**:
+    - 6-segment animated "worm" pattern
+    - Each segment is a single LED pixel
+    - Each segment has a distinct color
+  - **Animation Behavior**:
+    - Starts at outer edge of 8×8 matrix
+    - Follows clockwise spiral path inward
+    - Path: outer perimeter → second ring → third ring → center
+    - Smooth pixel-by-pixel movement
+    - Disappears as it reaches center pixel
+    - Restarts from outer edge continuously
+  - **Color Configuration**:
+    - **Rainbow Worm**: Each segment from spectrum (ROYGBV pattern)
+    - **Custom Colors**: User defines 6 segment colors individually
+    - **Themed Palettes**: Predefined color schemes (fire, ocean, forest, neon)
+  - **Speed Control**:
+    - Configurable animation speed (1-10, where 10 is fastest)
+    - Default: medium speed (5)
+    - Real-time speed adjustment without restart
+  - **Spiral Algorithm**:
+    - Clockwise traversal: top-right → right edge → bottom → left → inner spiral
+    - Total path length: 64 pixels (entire matrix)
+    - Head segment always visible, tail fades as approaching center
+
+- **Additional LED Display Modes** (Future Enhancement):
+  - Status Indicator Mode: Show sensor status with color codes
+  - Graph Mode: Simple bar graph of sensor values
+  - Alert Mode: Flash patterns for alarm conditions
+  - Off Mode: All LEDs disabled to save power
+
+- **LED Control Integration**:
+  - **Dashboard Interface**:
+    - LED mode selector widget in dashboard sidebar
+    - Current mode and status displayed
+    - Quick toggle with dedicated key (e.g., 'L' for LED control)
+  - **Settings Persistence**:
+    - LED mode and configuration saved to `~/.sensetop/led_config.json`
+    - Restore previous mode on application restart
+    - Default mode: Off (LEDs disabled)
+  - **Resource Management**:
+    - LED updates run in separate thread (non-blocking)
+    - Configurable LED refresh rate (10-60 FPS)
+    - Automatic cleanup on application exit (clear matrix)
+  - **Hardware Integration**:
+    - Direct communication via Sense HAT library (`sense_hat.set_pixel`, `sense_hat.set_pixels`)
+    - Brightness control via `sense_hat.low_light` or gamma correction
+    - Error handling for hardware communication failures
+
+- **User Experience Enhancements**:
+  - Live preview of LED output in terminal (8×8 ASCII representation)
+  - Color picker with visual feedback
+  - Animation speed preview
+  - Save/load custom display configurations
+  - Quick presets for common patterns
+
 ### 2. Technical Architecture
 
 #### Software Stack
@@ -81,7 +167,7 @@ SenseTop is a real-time monitoring application for the Sense HAT module on Raspb
   - LSM9DS1: 9-DOF IMU (accelerometer, gyroscope, magnetometer)
   - HTS221: Temperature and humidity sensor
   - LPS25H: Pressure sensor
-  - 8x8 LED matrix (optional real-time data visualization)
+  - 8×8 RGB LED matrix for visual display and feedback
 
 - **System Files Access**:
   - `/sys/class/thermal/thermal_zone0/temp` for CPU temperature
@@ -142,11 +228,21 @@ SenseTop is a real-time monitoring application for the Sense HAT module on Raspb
 - [ ] Graceful shutdown and cleanup
 
 #### Sensor Modules
-- [ ] IMU (accelerometer, gyroscope, magnetometer) module
-- [ ] Temperature/humidity sensor module
-- [ ] Pressure sensor module
-- [ ] CPU temperature and system metrics module
-- [ ] LED matrix visualization module (optional)
+- [x] IMU (accelerometer, gyroscope, magnetometer) module
+- [x] Temperature/humidity sensor module
+- [x] Pressure sensor module
+- [x] CPU temperature and system metrics module
+- [ ] LED matrix control module
+
+#### LED Matrix Control Module
+- [ ] LED display manager with mode switching
+- [ ] Text scrolling engine with font rendering
+- [ ] Color management (solid, rainbow, gradient, custom RGB)
+- [ ] Worm animation with spiral path algorithm
+- [ ] LED configuration persistence (JSON)
+- [ ] Thread-based LED updates (non-blocking)
+- [ ] Terminal preview (8×8 ASCII representation)
+- [ ] Input dialogs for text and color configuration
 
 #### Display Components
 - [ ] Dashboard view (primary display)
@@ -244,6 +340,18 @@ SenseTop is a real-time monitoring application for the Sense HAT module on Raspb
 - Release automation
 - Package distribution
 - Production deployment scripts
+
+#### Phase 6: LED Matrix Display Features (Week 6+)
+- Implement LED display manager and mode system
+- Create text scrolling engine with color support
+- Develop worm animation with spiral algorithm
+- Build dashboard LED control interface
+- Add LED configuration persistence
+- Implement thread-based LED updates
+- Create terminal-based LED preview (8×8 ASCII)
+- Add input dialogs for text and colors
+- Test all LED modes on hardware
+- Document LED feature usage
 
 ### 6. Configuration & Customization
 
