@@ -181,3 +181,13 @@ class TUI:
                 self.stdscr.refresh()
             except curses.error:
                 pass
+
+        # Explicitly restore terminal state
+        # This is critical for proper cleanup after crashes
+        try:
+            curses.nocbreak()
+            curses.echo()
+            curses.endwin()
+        except Exception:
+            # If curses methods fail, try to reset terminal via system
+            pass

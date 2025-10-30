@@ -1046,7 +1046,7 @@ class SettingsView(UIView):
 
             # Highlight selected sensor
             if i == (self.selected_sensor_idx % len(sensor_names)):
-                attr = self.color_manager.get_attr(ColorPair.ERROR)
+                attr = self.color_manager.get_attr(ColorPair.HIGHLIGHT)
                 marker = "▶"
             else:
                 attr = self.color_manager.get_attr(ColorPair.VALUE)
