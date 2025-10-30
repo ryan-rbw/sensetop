@@ -3166,3 +3166,664 @@ Specification is implementation-ready and provides clear guidance for Phase 6 de
 - Automated release pipeline
 - Ready for production use
 
+
+## Session 14: Phase 6 Implementation & Testing
+
+**Date:** 2025-10-30
+**Duration:** ~3 hours
+**Status:** COMPLETED
+
+### Objectives
+
+- Implement Phase 6: LED Matrix Display features
+- Create text scrolling and worm animation modes
+- Fix text input dialog and mode switching bugs
+- Write comprehensive test suite for LED manager
+- Improve test coverage above 60% target
+- Hardware validation on Raspberry Pi 5
+
+### Work Completed
+
+#### 1. Initial LED Manager Implementation (Commit: f08b89c)
+
+**New Module: sensetop/display/led_manager.py (533 lines)**
+
+Created complete LED matrix control system with:
+
+**Core Components:**
+- `LEDMode` enum: OFF, TEXT_SCROLL, WORM_ANIMATION
+- `ColorMode` enum: SOLID, CUSTOM_RGB, RAINBOW, GRADIENT
+- `ScrollSpeed` enum: SLOW (0.15s), MEDIUM (0.10s), FAST (0.05s)
+- `LEDConfig` dataclass with JSON persistence (~/.sensetop/led_config.json)
+- `LEDDisplayMode` abstract base class for display modes
+- `LEDDisplayManager`: Main manager with threading support
+
+**Worm Animation Mode:**
+- 6-segment animated worm with rainbow colors
+- `generate_spiral_path()`: Algorithm for 64-pixel clockwise spiral from outer edge to center
+- Configurable animation speed (1-10 scale)
+- Smooth pixel-by-pixel movement
+
+**Text Scroll Mode (Initial Implementation):**
+- Character-by-character text display
+- Configurable scroll speed and colors
+- Thread-based animation loop
+
+**Manager Features:**
+- Background update thread (configurable FPS: 10-60)
+- Mode switching with automatic cleanup
+- Brightness control (0.0-1.0)
+- ASCII preview for terminal/SSH users
+- Mock support for testing without hardware
+
+**Dashboard Integration (sensetop/display/views.py):**
+- LED mode status indicator in dashboard sidebar
+- 'L' key to cycle through modes: OFF → TEXT_SCROLL → WORM_ANIMATION → OFF
+- Real-time mode display update
+
+**App Integration (sensetop/app.py):**
+- LED manager initialization in app startup
+- Automatic start/stop with application lifecycle
+- Graceful shutdown with configuration persistence
+
+#### 2. Text Input Dialog Implementation (Commit: 36659f8)
+
+**User Issue:** No way to enter custom text for scrolling mode
+
+**Solution: Text Input Dialog in DashboardView**
+
+```python
+def _get_text_input(self) -> Optional[str]:
+    """Display text input dialog for LED text mode."""
+```
+
+**Features:**
+- Curses-based modal input dialog (60 chars wide)
+- Appears when transitioning to TEXT mode
+- Supports up to 100 characters
+- Clear instructions: "Enter text to display (max 100 chars)"
+- Press Enter to confirm, ESC to cancel
+- Proper cursor and echo restoration
+- Falls back to OFF mode on cancel
+
+**User Experience:**
+1. Press 'L' to cycle modes
+2. When reaching TEXT_SCROLL, dialog automatically appears
+3. User enters text
+4. Text immediately starts scrolling on LED matrix
+
+#### 3. Thread Cleanup & Mode Switching Fix (Commit: 178bd85)
+
+**User Issues:**
+1. Text continues rendering when switching to WORM mode (modes intermix)
+2. Text continues displaying when switched to OFF
+3. Text rotates or changes direction
+
+**Root Causes:**
+- `show_message()` is blocking, threads couldn't be interrupted mid-scroll
+- Display not cleared between mode switches
+- No thread stop event mechanism
+- Rotation not reset between modes
+
+**Fixes:**
+
+**Threading Event for Immediate Stop:**
+```python
+self._stop_event = threading.Event()
+```
+- Added to TextScrollMode for immediate thread interruption
+- Allows stopping mid-scroll instead of waiting for completion
+
+**Enhanced Mode Switching (LEDDisplayManager.set_mode()):**
+```python
+def set_mode(self, mode: LEDMode) -> None:
+    # Stop current mode
+    if self.current_mode:
+        self.current_mode.clear()
+    
+    # Clear display completely
+    if self.sense_hat:
+        self.sense_hat.clear()
+        self.sense_hat.set_rotation(0)  # Reset rotation
+    
+    # Give threads time to stop (show_message is blocking)
+    time.sleep(0.3)
+    
+    # Clear again to ensure no residual pixels
+    if self.sense_hat:
+        self.sense_hat.clear()
+```
+
+**Benefits:**
+- Clean mode transitions without intermixing
+- OFF mode now works correctly
+- Consistent display orientation (no rotation)
+
+#### 4. TextScrollMode Complete Rewrite (Commit: 50bb023)
+
+**User Issues:**
+1. Text shows letter-by-letter (static), not scrolling across matrix
+2. Text/WORM modes still intermix when cycling
+3. OFF doesn't work after multiple cycles
+
+**Root Cause:** Complex threading with `show_letter()` wasn't actually scrolling text
+
+**Solution: Simplified Architecture**
+
+**New Implementation:**
+- Start daemon thread immediately in `__init__`
+- Thread continuously loops Sense HAT's `show_message()` method
+- `show_message()` DOES scroll text across matrix (built-in feature)
+- Active flag controls thread lifetime
+- No intermediate states or complex synchronization
+
+**Key Code:**
+```python
+def __init__(self, sense_hat: Optional[SenseHat], config: LEDConfig) -> None:
+    super().__init__(sense_hat, config)
+    self.active = True
+    self.scroll_thread: Optional[threading.Thread] = None
+    
+    if self.sense_hat:
+        self.sense_hat.set_rotation(0)
+        # Start scrolling immediately in background thread
+        self.scroll_thread = threading.Thread(target=self._scroll_loop, daemon=True)
+        self.scroll_thread.start()
+
+def _scroll_loop(self) -> None:
+    """Continuously scroll text using Sense HAT's show_message."""
+    if not self.sense_hat:
+        return
+    
+    scroll_speed = ScrollSpeed[self.config.scroll_speed].value
+    color = self._get_text_color()
+    
+    # Loop continuously until deactivated
+    while self.active:
+        try:
+            self.sense_hat.show_message(
+                self.config.text,
+                scroll_speed=scroll_speed,
+                text_colour=color,
+                back_colour=[0, 0, 0],
+            )
+        except Exception as e:
+            self.logger.error(f"Error scrolling text: {e}")
+            break
+
+def clear(self) -> None:
+    """Clear the LED matrix and stop scrolling."""
+    self.active = False
+    if self.sense_hat:
+        self.sense_hat.clear()
+    super().clear()
+```
+
+**Benefits:**
+- Proper horizontal scrolling (user's expected behavior)
+- Simple boolean flag for thread control
+- Clean shutdown in clear()
+- No mode intermixing
+- OFF mode works correctly after multiple cycles
+
+**Hardware Validation:**
+User confirmed: "It's working now" after testing on Raspberry Pi 5
+
+#### 5. Comprehensive Test Suite Creation
+
+**User Request:** "Let's go back to the unit testing. I noticed earlier when you try and run pytest things fail. We also need to improve the test cases to get the code coverage up."
+
+**Created: tests/test_led_manager.py (371 lines, 32 tests)**
+
+**Test Classes:**
+
+**TestLEDConfig (5 tests):**
+- `test_led_config_defaults()` - Verify default configuration values
+- `test_led_config_custom_values()` - Custom configuration parameters
+- `test_led_config_save_load()` - JSON persistence round-trip
+- `test_led_config_load_missing_file()` - Graceful handling of missing config
+- `test_led_config_load_invalid_json()` - Error recovery from corrupt config
+
+**TestSpiralPath (4 tests):**
+- `test_generate_spiral_path_length()` - Verify 64-pixel path length
+- `test_generate_spiral_path_all_unique()` - All 64 positions unique
+- `test_generate_spiral_path_valid_coordinates()` - Valid 8×8 coordinates
+- `test_generate_spiral_path_starts_at_corner()` - Starts at (0,0)
+
+**TestWormAnimationMode (5 tests):**
+- `test_worm_init()` - Initialization with correct properties
+- `test_worm_update()` - Frame update advances position
+- `test_worm_get_segment_color()` - Color retrieval for segments
+- `test_worm_ascii_preview()` - ASCII representation generation
+- `test_worm_clear()` - Cleanup and display clearing
+
+**TestTextScrollMode (5 tests):**
+- `test_text_init()` - Initialization with thread start
+- `test_text_get_color_solid()` - Color mode handling
+- `test_text_clear()` - Thread stop and cleanup
+- `test_text_ascii_preview()` - ASCII preview with text
+- `test_text_update_does_nothing()` - No-op update method
+
+**TestLEDDisplayManager (10 tests):**
+- `test_manager_init_mock()` - Mock initialization
+- `test_manager_set_mode_off()` - OFF mode setting
+- `test_manager_set_mode_worm()` - WORM_ANIMATION mode
+- `test_manager_set_mode_text()` - TEXT_SCROLL mode
+- `test_manager_mode_switching()` - Cycling through all modes
+- `test_manager_start_stop()` - Update thread lifecycle
+- `test_manager_ascii_preview_off()` - Preview in OFF mode
+- `test_manager_ascii_preview_worm()` - Preview in WORM mode
+- `test_manager_save_config()` - Configuration persistence
+- `test_manager_shutdown()` - Graceful shutdown with config save
+
+**TestEnums (3 tests):**
+- `test_led_mode_enum()` - LEDMode enum values
+- `test_color_mode_enum()` - ColorMode enum values
+- `test_scroll_speed_enum()` - ScrollSpeed enum values
+
+#### 6. Threading Cleanup in Tests
+
+**Issue:** Tests were being killed (exit code 137) due to uncleaned threads
+
+**Root Cause:** TextScrollMode starts daemon threads immediately in `__init__`, tests weren't stopping these threads
+
+**Solution: Try/Finally Blocks**
+
+Added proper cleanup to all tests that create TextScrollMode instances:
+
+```python
+def test_text_init(self, mock_sense_hat, text_config):
+    """Test text scroll mode initialization."""
+    text_mode = TextScrollMode(mock_sense_hat, text_config)
+    try:
+        assert text_mode.sense_hat == mock_sense_hat
+        assert text_mode.active is True
+        mock_sense_hat.set_rotation.assert_called_once_with(0)
+    finally:
+        text_mode.clear()  # Stop thread - CRITICAL
+```
+
+**Tests modified with cleanup:**
+- `test_text_init()`
+- `test_text_get_color_solid()`
+- `test_text_ascii_preview()`
+- `test_text_update_does_nothing()`
+- `test_manager_set_mode_text()`
+- `test_manager_mode_switching()`
+
+**Result:** All 222 tests pass reliably without hangs or kills
+
+#### 7. Final Coverage Results
+
+**Coverage increased from 57.42% → 63.64% (exceeds 60% target)**
+
+**LED Manager Module:**
+- Before: 37% coverage (extremely low)
+- After: 83% coverage (excellent)
+- Impact: +46% improvement
+
+**Overall Test Statistics:**
+- Total tests: 222 passing (190 original + 32 new)
+- Execution time: 12.71 seconds
+- Failures: 0
+- Coverage: 63.64% (target: 60%)
+
+**Detailed Coverage by Module (Final):**
+
+| Module | Before | After | Change | Status |
+|--------|--------|-------|--------|--------|
+| led_manager.py | 37% | 83% | +46% | ✅ Excellent |
+| buffer.py | 98% | 98% | - | ✅ Maintained |
+| history.py | 100% | 100% | - | ✅ Perfect |
+| export.py | 93% | 93% | - | ✅ Maintained |
+| app.py | 75% | 66% | -9% | ✅ Good |
+| environmental.py | 72% | 71% | -1% | ✅ Good |
+| imu.py | 66% | 66% | - | ✅ Good |
+| system.py | 61% | 61% | - | ✅ Good |
+| **TOTAL** | **57.42%** | **63.64%** | **+6.22%** | **✅ ACHIEVED** |
+
+**Coverage Summary:**
+```
+sensetop/display/led_manager.py       250     36    100     15    83%
+TOTAL                                1921    678    620     62    64%
+Required test coverage of 60% reached. Total coverage: 63.64%
+```
+
+### Commit Information
+
+**Commit 1: f08b89c**
+- Message: "Implement Phase 6: LED Matrix Display features"
+- Files: sensetop/display/led_manager.py (new), sensetop/display/views.py, sensetop/app.py
+- Lines Added: 547 (led_manager) + 60 (views) + 14 (app)
+
+**Commit 2: 36659f8**
+- Message: "Fix LED text scroll mode with input dialog and proper rendering"
+- Files: sensetop/display/views.py, sensetop/display/led_manager.py
+- Lines Added: 91 (views) + 72 (led_manager)
+
+**Commit 3: 178bd85**
+- Message: "Fix LED mode switching: prevent mode intermixing and rotation issues"
+- Files: sensetop/display/led_manager.py
+- Lines Modified: 83
+
+**Commit 4: 50bb023**
+- Message: "Rewrite TextScrollMode: proper scrolling and clean mode switching"
+- Files: sensetop/display/led_manager.py
+- Lines Modified: 129 (simplified architecture)
+
+### Technical Achievements
+
+#### 1. LED Matrix Control Architecture
+
+**Modular Design:**
+- Abstract base class `LEDDisplayMode` for extensibility
+- Each mode (TEXT, WORM) is independent class
+- Manager coordinates lifecycle and threading
+- Clean separation of concerns
+
+**Threading Model:**
+- Manager runs update loop in background thread (configurable FPS)
+- TextScrollMode runs separate daemon thread for scrolling
+- WormAnimationMode updates synchronously in manager loop
+- Proper thread cleanup prevents resource leaks
+
+**Configuration Persistence:**
+- JSON-based config storage (~/.sensetop/led_config.json)
+- Remembers user's last mode, text, colors, speeds
+- Automatically restored on application restart
+
+#### 2. Worm Animation Spiral Algorithm
+
+**Mathematical Path Generation:**
+```python
+def generate_spiral_path() -> List[Tuple[int, int]]:
+    """Generate clockwise spiral path from outer edge to center."""
+    # Clockwise traversal:
+    # 1. Top edge: left to right
+    # 2. Right edge: top to bottom  
+    # 3. Bottom edge: right to left
+    # 4. Left edge: bottom to top
+    # Repeat for inner rings
+```
+
+**Properties:**
+- Total length: 64 pixels (entire 8×8 matrix)
+- Clockwise direction
+- Starts at (0, 0) top-left corner
+- All unique coordinates
+- Perfect for continuous looping animation
+
+**Visual Effect:**
+- 6-segment worm with rainbow colors (ROYGBV)
+- Smooth pixel-by-pixel movement
+- Configurable speed (1-10 scale)
+- Continuous loop from outer edge to center
+
+#### 3. Text Scrolling with Sense HAT API
+
+**Leveraged Built-in Functionality:**
+- Uses `sense_hat.show_message()` for smooth scrolling
+- 5×7 pixel font rendering (Sense HAT standard)
+- Configurable scroll speed (slow/medium/fast)
+- Color customization support
+
+**Threading Strategy:**
+- Background daemon thread for continuous scrolling
+- `show_message()` blocks during scroll (intentional)
+- Boolean flag `active` for clean shutdown
+- No complex synchronization needed
+
+#### 4. Mode Switching Robustness
+
+**Challenges Solved:**
+1. **Mode Intermixing:** Ensured complete stop of previous mode before starting new
+2. **Display Residue:** Double-clear with time delay for blocking operations
+3. **Rotation Reset:** Always set rotation to 0 for consistent orientation
+4. **Thread Safety:** Proper cleanup prevents resource leaks
+
+**Implementation:**
+- Explicit clear() on previous mode
+- Hardware display clear before/after mode switch
+- 300ms delay for thread completion
+- Rotation reset to 0
+
+#### 5. Test Infrastructure
+
+**Mock Strategy:**
+- MagicMock for Sense HAT hardware
+- `use_mock=True` flag for manager initialization
+- Fixtures for common test setups
+- No hardware required for CI/CD
+
+**Thread Safety in Tests:**
+- Try/finally blocks for guaranteed cleanup
+- All threads stopped before test completion
+- No resource leaks between tests
+- Reliable execution without hangs
+
+**Coverage Strategy:**
+- Unit tests for individual components
+- Integration tests for mode switching
+- Edge case handling (missing files, invalid JSON)
+- ASCII preview validation
+
+### Design Decisions
+
+#### 1. Daemon Threads vs. Managed Threads
+
+**Decision:** Use daemon threads for TextScrollMode
+
+**Rationale:**
+- Main thread controls application lifecycle
+- Daemon threads automatically terminate with main thread
+- Prevents hanging on application exit
+- Simple boolean flag sufficient for cleanup
+
+**Trade-off:** Requires explicit cleanup in tests (try/finally)
+
+#### 2. show_message() Blocking Behavior
+
+**Decision:** Embrace blocking nature of `show_message()`
+
+**Rationale:**
+- Simplifies threading model (no synchronization needed)
+- Natural scrolling behavior (complete message display)
+- Less code complexity
+- User expects continuous scrolling, not interrupted
+
+**Trade-off:** Mode switches take up to 300ms to complete
+
+#### 3. Configuration Persistence
+
+**Decision:** JSON file in user's home directory
+
+**Rationale:**
+- Human-readable format (easy debugging)
+- Standard Python json library (no dependencies)
+- User can manually edit if desired
+- Survives application restarts
+
+**Implementation:** `~/.sensetop/led_config.json`
+
+#### 4. ASCII Preview for SSH Users
+
+**Decision:** Include terminal preview in all modes
+
+**Rationale:**
+- Many users develop over SSH without physical access
+- Visual feedback essential for development
+- Debugging without hardware
+- Simple 8×8 character grid representation
+
+**Example Output:**
+```
+········  (OFF mode)
+█████···  (WORM animation)
+SenseTop  (TEXT mode)
+```
+
+#### 5. Test Isolation
+
+**Decision:** Use temporary config paths in tests
+
+**Rationale:**
+- No contamination between tests
+- Predictable test environment
+- No side effects on user's config
+- pytest tmp_path fixture perfect for this
+
+**Implementation:**
+```python
+@pytest.fixture
+def temp_config_path(self, tmp_path):
+    return tmp_path / "led_config.json"
+
+manager = LEDDisplayManager(use_mock=True, config_path=temp_config_path)
+```
+
+### User Feedback & Validation
+
+**Initial Feedback:**
+> "The LED matrix works but specifically the text mode does not. It's not clear how to enter text to be displayed"
+
+**After Dialog Implementation:**
+> "Not working correctly. The text should scroll from side of the matrix to the other in a single orientation. Also once I loop around the modes the same confusion happens and we get a mix of WORM and TEXT, as a result OFF doesn't work until I quit the program"
+
+**After Complete Rewrite:**
+> "It's working now. Let's go back to the unit testing."
+
+**Hardware Validation:**
+- Tested on Raspberry Pi 5 with physical Sense HAT
+- Text scrolling works correctly (horizontal, continuous)
+- WORM animation smooth and visually appealing
+- Mode switching clean without intermixing
+- OFF mode properly clears display
+
+### Artifacts Produced
+
+1. **sensetop/display/led_manager.py (570 lines)**
+   - Complete LED matrix control system
+   - 3 display modes (OFF, TEXT_SCROLL, WORM_ANIMATION)
+   - Configuration management with JSON persistence
+   - Threading and lifecycle management
+
+2. **tests/test_led_manager.py (371 lines, 32 tests)**
+   - Comprehensive test coverage (83% of module)
+   - Mock-based testing (no hardware required)
+   - Edge case handling
+   - Thread cleanup validation
+
+3. **sensetop/display/views.py modifications**
+   - Text input dialog (60 chars wide)
+   - LED mode indicator in dashboard
+   - 'L' key handler for mode cycling
+
+4. **sensetop/app.py integration**
+   - LED manager initialization
+   - Lifecycle management
+   - Graceful shutdown
+
+### Session Summary
+
+Successfully implemented Phase 6 (LED Matrix Display Control) with comprehensive features:
+
+**Implementation:**
+- Created complete LED manager system (570 lines)
+- Implemented text scrolling with input dialog
+- Implemented worm animation with spiral algorithm
+- Dashboard integration with keyboard controls
+- Configuration persistence
+
+**Bug Fixes:**
+- Fixed text input (added modal dialog)
+- Fixed text scrolling (rewrote to use show_message())
+- Fixed mode intermixing (proper thread cleanup)
+- Fixed rotation issues (reset to 0 on mode switch)
+- Fixed OFF mode not working (double-clear with delay)
+
+**Testing:**
+- Created 32 comprehensive tests (371 lines)
+- Fixed threading cleanup issues (try/finally blocks)
+- Achieved 83% coverage for LED manager module
+- Improved overall coverage from 57.42% to 63.64%
+
+**Validation:**
+- Hardware tested on Raspberry Pi 5
+- All modes working correctly
+- User confirmed: "It's working now"
+
+**Project Status:**
+- Phase 6: LED Matrix Display - ✅ COMPLETE
+- All 6 development phases now complete
+- 222 passing tests
+- 63.64% code coverage (exceeds 60% target)
+- Ready for v0.3.0 release
+
+---
+
+## Session Tracking (Updated)
+
+| Session | Date | Focus | Status |
+|---------|------|-------|--------|
+| 1 | 2025-10-27 | GitHub setup & initialization | ✅ Complete |
+| 2 | 2025-10-27 | Phase 1: Sensor Interface | ✅ Complete |
+| 3 | 2025-10-28 | GitHub Actions CI/CD Setup | ✅ Complete |
+| 4 | 2025-10-28 | Phase 2: Terminal UI Framework (MVP) | ✅ Complete |
+| 5 | 2025-10-28 | Phase 2: Keyboard & Help System | ✅ Complete |
+| 6 | 2025-10-28 | Phase 3: Data Processing & Visualization | ✅ Complete |
+| 7 | 2025-10-28 | Phase 4: Threshold & Alarm System (Part 1) | ✅ Complete |
+| 8 | 2025-10-28 | Phase 4: Alert & Settings UI (Part 2) | ✅ Complete |
+| 9 | 2025-10-29 | Phase 5: Release Automation with GitHub Actions | ✅ Complete |
+| 10 | 2025-10-29 | Test Coverage Improvement & First Release (v0.2.0) | ✅ Complete |
+| 11 | 2025-10-30 | Multi-Environment Development Setup | ✅ Complete |
+| 12 | 2025-10-30 | Hardware Testing & Bug Fixes on Raspberry Pi 5 | ✅ Complete |
+| 13 | 2025-10-30 | LED Matrix Display Specification (Phase 6) | ✅ Complete |
+| 14 | 2025-10-30 | Phase 6 Implementation & Testing | ✅ Complete |
+
+**Overall Project Status:** ✅ **ALL 6 PHASES COMPLETE**
+
+### Project Completion Summary
+
+**Development Phases:** ✅ 100% Complete (6/6 phases)
+- Phase 1: Sensor Interface ✅
+- Phase 2: Terminal UI Framework ✅
+- Phase 3: Data Processing & Visualization ✅
+- Phase 4: Threshold & Alarm System ✅
+- Phase 5: Release Automation ✅
+- Phase 6: LED Matrix Display ✅
+
+**Testing & Quality:** ✅ Enhanced
+- 222 passing tests (+32 from Session 14)
+- 63.64% code coverage (exceeds 60% target, +6.22% from Session 10)
+- LED manager module: 83% coverage
+- Multi-Python version testing (3.8-3.11)
+- CI/CD pipeline with linting and tests
+- Thread safety validated
+- Hardware validated on Raspberry Pi 5
+
+**Release Status:**
+- v0.2.0: Released ✅ (First production release)
+- v0.3.0: Ready for release (LED features)
+
+**Total Lines of Production Code:** ~3,100 lines (+600 from Session 14)
+**Total Test Cases:** 222 tests (+32 from Session 14)
+**Code Coverage:** 63.64% (improved from 57.42%)
+**Total Development Time:** ~12.5 hours across 14 sessions
+
+### Next Steps
+
+1. **Version 0.3.0 Release Preparation**
+   - Update version numbers
+   - Create release notes highlighting LED features
+   - Tag and trigger release workflow
+
+2. **Documentation Updates**
+   - Update README.md with LED feature screenshots
+   - Add LED configuration guide
+   - Document keyboard controls ('L' key)
+
+3. **Future Enhancements (Post-v0.3.0)**
+   - Additional LED modes (Status Indicator, Graph, Alert Flash)
+   - Color picker UI for custom colors
+   - LED animation library
+   - More themed color palettes for worm
