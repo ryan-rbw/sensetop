@@ -314,7 +314,7 @@ class WormAnimationMode(LEDDisplayMode):
 
 
 class TextScrollMode(LEDDisplayMode):
-    """Text scrolling display mode."""
+    """Text scrolling display mode using Sense HAT's built-in scrolling."""
 
     def __init__(self, sense_hat: Optional[SenseHat], config: LEDConfig) -> None:
         """Initialize text scroll mode.
@@ -324,84 +324,42 @@ class TextScrollMode(LEDDisplayMode):
             config: LED configuration.
         """
         super().__init__(sense_hat, config)
+        self.active = True
         self.scroll_thread: Optional[threading.Thread] = None
-        self.scrolling = False
-        self._stop_event = threading.Event()
-        self.scroll_position = 0  # Track position for rainbow mode
 
         # Set rotation to 0 to prevent orientation changes
         if self.sense_hat:
             self.sense_hat.set_rotation(0)
+            # Start scrolling immediately in background thread
+            self.scroll_thread = threading.Thread(target=self._scroll_loop, daemon=True)
+            self.scroll_thread.start()
 
-    def start_scrolling(self) -> None:
-        """Start the text scrolling in a separate thread."""
-        if self.scrolling:
-            return
-
-        self.scrolling = True
-        self._stop_event.clear()
-        self.scroll_thread = threading.Thread(target=self._scroll_text_loop, daemon=True)
-        self.scroll_thread.start()
-
-    def stop_scrolling(self) -> None:
-        """Stop the text scrolling immediately."""
-        self.scrolling = False
-        self._stop_event.set()
-
-        # Clear display immediately
-        if self.sense_hat:
-            self.sense_hat.clear()
-
-        # Wait for thread to finish
-        if self.scroll_thread and self.scroll_thread.is_alive():
-            self.scroll_thread.join(timeout=0.5)
-
-    def _scroll_text_loop(self) -> None:
-        """Continuously scroll text on the LED matrix."""
+    def _scroll_loop(self) -> None:
+        """Continuously scroll text using Sense HAT's show_message."""
         if not self.sense_hat:
             return
 
         scroll_speed = ScrollSpeed[self.config.scroll_speed].value
+        color = self._get_text_color()
 
-        # Break text scrolling into smaller chunks so we can check stop flag
-        # Use letter-by-letter scrolling instead of blocking show_message
-        while self.scrolling and not self._stop_event.is_set():
+        # Loop continuously until deactivated
+        while self.active:
             try:
-                # Scroll through each character
-                for i, char in enumerate(self.config.text):
-                    if not self.scrolling or self._stop_event.is_set():
-                        break
-
-                    # Update position for rainbow mode
-                    self.scroll_position = i
-
-                    # Get color (may change per character for rainbow)
-                    color = self._get_text_color()
-
-                    # Show single character
-                    self.sense_hat.show_letter(char, text_colour=color, back_colour=[0, 0, 0])
-
-                    # Brief pause between letters
-                    if self._stop_event.wait(scroll_speed):
-                        break
-
-                # Check again before looping
-                if not self.scrolling or self._stop_event.is_set():
-                    break
-
+                # Scroll the message once (this blocks during the scroll)
+                self.sense_hat.show_message(
+                    self.config.text,
+                    scroll_speed=scroll_speed,
+                    text_colour=color,
+                    back_colour=[0, 0, 0],
+                )
+                # Check if still active after scroll completes before looping
             except Exception as e:
                 self.logger.error(f"Error scrolling text: {e}")
                 break
 
-        # Clear on exit
-        if self.sense_hat:
-            self.sense_hat.clear()
-
     def update(self) -> None:
-        """Update text scroll for one frame."""
-        # Start scrolling if not already started
-        if not self.scrolling:
-            self.start_scrolling()
+        """Update - not needed, scrolling happens in background thread."""
+        pass
 
     def _get_text_color(self) -> Tuple[int, int, int]:
         """Get color for text based on color mode.
@@ -411,41 +369,17 @@ class TextScrollMode(LEDDisplayMode):
         """
         if self.config.text_color_mode == ColorMode.SOLID.value:
             return self.config.text_color
-        elif self.config.text_color_mode == ColorMode.RAINBOW.value:
-            # Rainbow color cycles based on position
-            hue = (self.scroll_position * 10) % 360
-            return self._hue_to_rgb(hue)
         else:
+            # For now, just use solid color
+            # Rainbow mode would require pixel-level control
             return self.config.text_color
-
-    def _hue_to_rgb(self, hue: float) -> Tuple[int, int, int]:
-        """Convert HSV hue to RGB color.
-
-        Args:
-            hue: Hue value (0-360).
-
-        Returns:
-            RGB color tuple (0-255).
-        """
-        h = hue / 60.0
-        x = int(255 * (1 - abs(h % 2 - 1)))
-
-        if 0 <= h < 1:
-            return (255, x, 0)
-        elif 1 <= h < 2:
-            return (x, 255, 0)
-        elif 2 <= h < 3:
-            return (0, 255, x)
-        elif 3 <= h < 4:
-            return (0, x, 255)
-        elif 4 <= h < 5:
-            return (x, 0, 255)
-        else:
-            return (255, 0, x)
 
     def clear(self) -> None:
         """Clear the LED matrix and stop scrolling."""
-        self.stop_scrolling()
+        self.active = False
+        # Clear display immediately - don't wait for thread
+        if self.sense_hat:
+            self.sense_hat.clear()
         super().clear()
 
     def get_ascii_preview(self) -> str:
@@ -512,13 +446,18 @@ class LEDDisplayManager:
         # Stop current mode
         if self.current_mode:
             self.current_mode.clear()
-            # Give thread time to stop
-            time.sleep(0.1)
 
-        # Ensure display is completely clear before starting new mode
+        # Ensure display is completely clear and give threads time to finish
         if self.sense_hat:
             self.sense_hat.clear()
             self.sense_hat.set_rotation(0)  # Reset rotation
+
+        # Give threads more time to stop (show_message can be blocking)
+        time.sleep(0.3)
+
+        # Clear again to ensure no residual pixels
+        if self.sense_hat:
+            self.sense_hat.clear()
 
         # Create new mode
         if mode == LEDMode.OFF:
