@@ -32,6 +32,14 @@ A real-time terminal-based monitoring application for the Sense HAT module on Ra
 - **Settings View**: Threshold configuration and system settings
 - **Help View**: Comprehensive keyboard shortcuts and documentation
 
+### 💡 LED Matrix Display
+- **Text Scrolling**: Display custom text with horizontal scrolling animation
+- **Worm Animation**: 6-segment animated worm following clockwise spiral path
+- **Interactive Control**: Press **L** to cycle through modes (OFF → TEXT → WORM)
+- **Text Input Dialog**: Enter custom messages up to 100 characters
+- **Configuration Persistence**: Remembers your last mode and settings
+- **Terminal Preview**: ASCII representation for remote development over SSH
+
 ### 🎨 Customization
 - **Three Color Themes**: Dark, Light, Colorful
 - **Threshold Management**: Configurable warning/critical ranges per sensor
@@ -41,7 +49,7 @@ A real-time terminal-based monitoring application for the Sense HAT module on Ra
 ### 🧪 Development-Friendly
 - **Mock Mode**: Full functionality without hardware for development/testing
 - **Multi-Environment**: Develop on Ubuntu/macOS, validate on Raspberry Pi
-- **190 Tests**: 62.79% code coverage, comprehensive test suite
+- **222 Tests**: 63.64% code coverage, comprehensive test suite
 - **CI/CD**: GitHub Actions for testing, linting, building, releases
 
 ## 🚀 Quick Start
@@ -99,6 +107,7 @@ See [RUNNING_LOCALLY.md](RUNNING_LOCALLY.md) for detailed instructions on runnin
 | **2** | Graphs view (historical trends) |
 | **3** | Alerts view (active alarms) |
 | **4** | Settings view (thresholds) |
+| **L** | Cycle LED modes (OFF → TEXT → WORM) |
 | **h** or **?** | Help screen |
 | **q** or **ESC** | Quit application |
 | **↑/↓** or **j/k** | Navigate lists |
