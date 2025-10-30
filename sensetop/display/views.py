@@ -46,6 +46,7 @@ class DashboardView(UIView):
             self._draw_imu_section(stdscr, width, 3)
             self._draw_environmental_section(stdscr, width, 13)
             self._draw_system_section(stdscr, width, 23)
+            self._draw_led_section(stdscr, width, height, 33)
 
             # Draw footer
             self._draw_footer(stdscr, height, width)
@@ -273,6 +274,66 @@ class DashboardView(UIView):
                     self.color_manager.get_attr(ColorPair.STATUS_ERROR),
                 )
 
+    def _draw_led_section(
+        self, stdscr: "curses._CursesWindow", width: int, height: int, start_y: int
+    ) -> None:
+        """Draw LED matrix display section."""
+        # Only draw if there's enough space
+        if start_y + 13 > height - 3:
+            return
+
+        # Section title
+        stdscr.addstr(
+            start_y,
+            2,
+            "LED Matrix Display",
+            self.color_manager.get_attr(ColorPair.LABEL),
+        )
+
+        # Get LED manager
+        led_manager = self.app.led_manager
+        if led_manager:
+            try:
+                # Display current mode
+                from sensetop.display.led_manager import LEDMode
+
+                mode_name = led_manager.config.mode.upper().replace("_", " ")
+                stdscr.addstr(
+                    start_y + 1,
+                    4,
+                    f"Mode: {mode_name}",
+                    self.color_manager.get_attr(ColorPair.VALUE),
+                )
+
+                # Display 8x8 ASCII preview
+                preview = led_manager.get_ascii_preview()
+                preview_lines = preview.split("\n")
+                for i, line in enumerate(preview_lines):
+                    if start_y + 3 + i < height - 3:
+                        stdscr.addstr(
+                            start_y + 3 + i,
+                            4,
+                            line,
+                            self.color_manager.get_attr(ColorPair.VALUE),
+                        )
+
+                # Display controls hint
+                if start_y + 12 < height - 3:
+                    stdscr.addstr(
+                        start_y + 12,
+                        4,
+                        "Press 'L' to cycle LED modes",
+                        self.color_manager.get_attr(ColorPair.LABEL),
+                    )
+
+            except Exception as e:
+                stdscr.addstr(
+                    start_y + 1,
+                    4,
+                    f"LED error: {str(e)[:40]}",
+                    self.color_manager.get_attr(ColorPair.STATUS_ERROR),
+                )
+
     def _draw_footer(self, stdscr: "curses._CursesWindow", height: int, width: int) -> None:
         """Draw the footer section."""
         footer = " q: Quit  h: Help  1-3: Views "
@@ -340,6 +401,23 @@ class DashboardView(UIView):
         # but we can handle view-specific shortcuts here
         if key == ord("r"):  # Refresh (already refreshing, but could force)
             return True
+
+        # LED mode cycling with 'L' key
+        if key == ord("L") or key == ord("l"):
+            from sensetop.display.led_manager import LEDMode
+
+            led_manager = self.app.led_manager
+            if led_manager:
+                # Cycle through modes: OFF -> WORM_ANIMATION -> TEXT_SCROLL -> OFF
+                current_mode = LEDMode[led_manager.config.mode.upper()]
+                if current_mode == LEDMode.OFF:
+                    led_manager.set_mode(LEDMode.WORM_ANIMATION)
+                elif current_mode == LEDMode.WORM_ANIMATION:
+                    led_manager.set_mode(LEDMode.TEXT_SCROLL)
+                else:
+                    led_manager.set_mode(LEDMode.OFF)
+            return True
+
         return False
 
 
@@ -370,6 +448,7 @@ class HelpView(UIView):
             "",
             " Dashboard Controls ",
             "  (View updates automatically every 500ms)",
+            "  L          Cycle LED modes (OFF → Worm → Text)",
             "",
             " Graph Controls ",
             "  ↑/↓ or j/k  Navigate between graphs",
@@ -380,6 +459,12 @@ class HelpView(UIView):
             " Settings Controls ",
             "  ↑/↓ or j/k  Select sensor threshold",
             "  r          Reset all to defaults",
+            "",
+            " LED Matrix Display ",
+            "  OFF:        All LEDs disabled (default)",
+            "  WORM:       Animated 6-segment spiral",
+            "  TEXT:       Scrolling text message",
+            "  8×8 preview shown on dashboard",
             "",
             " Display Indicators ",
             "  [OK]       Status is normal",
@@ -645,11 +730,9 @@ class GraphView(UIView):
 
                     # Draw bar chart (multi-line graph)
                     bar_chart = GraphRenderer.render_bar_chart(
-                        values,
-                        height=chart_height,
-                        width=width - 4
+                        values, height=chart_height, width=width - 4
                     )
-                    chart_lines = bar_chart.split('\n')
+                    chart_lines = bar_chart.split("\n")
                     for i, line in enumerate(chart_lines):
                         if y + 1 + i < height - 2:
                             stdscr.addstr(

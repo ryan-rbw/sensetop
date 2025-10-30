@@ -11,6 +11,7 @@ from sensetop.data.alarms import AlarmManager
 from sensetop.data.history import DataHistoryManager
 from sensetop.data.thresholds import ThresholdManager
 from sensetop.display.colors import ColorManager, ColorScheme
+from sensetop.display.led_manager import LEDDisplayManager
 from sensetop.display.tui import TUI
 from sensetop.display.views import AlertView, DashboardView, GraphView, HelpView, SettingsView
 from sensetop.sensors.environmental import EnvironmentalSensor
@@ -51,6 +52,9 @@ class SenseTopApp:
         # Threshold and alarm management
         self.threshold_manager = ThresholdManager()
         self.alarm_manager = AlarmManager(self.threshold_manager)
+
+        # LED matrix display manager
+        self.led_manager = LEDDisplayManager(use_mock=self.config.use_mock)
 
         # Control flags
         self.running = False
@@ -228,6 +232,9 @@ class SenseTopApp:
         )
         self.sensor_thread.start()
 
+        # Start LED manager
+        self.led_manager.start()
+
         try:
             # Run the curses application
             curses.wrapper(self._run_curses)
@@ -302,6 +309,13 @@ class SenseTopApp:
             self.logger.debug("TUI shutdown complete")
         except Exception as e:
             self.logger.error(f"Error shutting down TUI: {e}")
+
+        # Shutdown LED manager
+        try:
+            self.led_manager.shutdown()
+            self.logger.debug("LED manager shutdown complete")
+        except Exception as e:
+            self.logger.error(f"Error shutting down LED manager: {e}")
 
         # Shutdown sensors
         for sensor_name, sensor in self.sensors.items():
