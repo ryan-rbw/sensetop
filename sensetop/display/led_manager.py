@@ -320,31 +320,51 @@ class TextScrollMode(LEDDisplayMode):
             config: LED configuration.
         """
         super().__init__(sense_hat, config)
-        self.scroll_position = 8  # Start off-screen right
-        self.scroll_speed = ScrollSpeed[config.scroll_speed].value
-        self.last_update = 0.0
+        self.scroll_thread: Optional[threading.Thread] = None
+        self.scrolling = False
+
+    def start_scrolling(self) -> None:
+        """Start the text scrolling in a separate thread."""
+        if self.scrolling:
+            return
+
+        self.scrolling = True
+        self.scroll_thread = threading.Thread(target=self._scroll_text_loop, daemon=True)
+        self.scroll_thread.start()
+
+    def stop_scrolling(self) -> None:
+        """Stop the text scrolling."""
+        self.scrolling = False
+        if self.scroll_thread:
+            self.scroll_thread.join(timeout=1.0)
+
+    def _scroll_text_loop(self) -> None:
+        """Continuously scroll text on the LED matrix."""
+        if not self.sense_hat:
+            return
+
+        scroll_speed = ScrollSpeed[self.config.scroll_speed].value
+        color = self._get_text_color()
+
+        while self.scrolling:
+            try:
+                # Use Sense HAT's show_message with non-blocking approach
+                # We use a very fast scroll speed and loop to give continuous effect
+                self.sense_hat.show_message(
+                    self.config.text,
+                    scroll_speed=scroll_speed,
+                    text_colour=color,
+                    back_colour=[0, 0, 0],
+                )
+            except Exception as e:
+                self.logger.error(f"Error scrolling text: {e}")
+                break
 
     def update(self) -> None:
         """Update text scroll for one frame."""
-        current_time = time.time()
-
-        # Check if enough time has passed for next frame
-        if current_time - self.last_update < self.scroll_speed:
-            return
-
-        self.last_update = current_time
-
-        # Use Sense HAT's built-in text scrolling
-        if self.sense_hat:
-            color = self._get_text_color()
-            # Note: show_message is blocking, so we'll need a different approach
-            # For now, we'll use a simpler pixel-by-pixel implementation
-            self._render_text_frame()
-
-        # Advance scroll position
-        self.scroll_position -= 1
-        if self.scroll_position < -len(self.config.text) * 6:
-            self.scroll_position = 8  # Reset to right side
+        # Start scrolling if not already started
+        if not self.scrolling:
+            self.start_scrolling()
 
     def _get_text_color(self) -> Tuple[int, int, int]:
         """Get color for text based on color mode.
@@ -386,28 +406,25 @@ class TextScrollMode(LEDDisplayMode):
         else:
             return (255, 0, x)
 
-    def _render_text_frame(self) -> None:
-        """Render current frame of text scroll.
-
-        This is a simplified implementation. A full implementation would
-        need to render the text using the Sense HAT's 5x7 font.
-        """
-        # TODO: Implement pixel-by-pixel text rendering
-        # For now, use Sense HAT's built-in show_message if available
-        pass
+    def clear(self) -> None:
+        """Clear the LED matrix and stop scrolling."""
+        self.stop_scrolling()
+        super().clear()
 
     def get_ascii_preview(self) -> str:
         """Get ASCII representation of scrolling text.
 
         Returns:
-            8x8 ASCII grid showing text position.
+            8x8 ASCII grid showing text info.
         """
-        # Simplified preview showing text position
+        # Show text preview - first few characters
         grid = [["·" for _ in range(8)] for _ in range(8)]
 
-        # Show text position indicator in middle row
-        if 0 <= self.scroll_position < 8:
-            grid[4][self.scroll_position] = "█"
+        # Display text indicator in center
+        text_preview = self.config.text[:8] if self.config.text else "TEXT"
+        for i, char in enumerate(text_preview):
+            if i < 8:
+                grid[4][i] = char if char.isprintable() else "?"
 
         return "\n".join("".join(row) for row in grid)
 

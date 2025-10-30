@@ -413,12 +413,70 @@ class DashboardView(UIView):
                 if current_mode == LEDMode.OFF:
                     led_manager.set_mode(LEDMode.WORM_ANIMATION)
                 elif current_mode == LEDMode.WORM_ANIMATION:
-                    led_manager.set_mode(LEDMode.TEXT_SCROLL)
+                    # Prompt for text input before switching to text mode
+                    text = self._get_text_input()
+                    if text:  # Only switch if user entered text
+                        led_manager.config.text = text
+                        led_manager.set_mode(LEDMode.TEXT_SCROLL)
+                    else:
+                        # User cancelled, go to OFF instead
+                        led_manager.set_mode(LEDMode.OFF)
                 else:
                     led_manager.set_mode(LEDMode.OFF)
             return True
 
         return False
+
+    def _get_text_input(self) -> str:
+        """Get text input from user for LED text scroll.
+
+        Returns:
+            User-entered text string, or empty string if cancelled.
+        """
+        import curses
+
+        # Create a small input window
+        try:
+            height, width = 7, 60
+            y = 10
+            x = max(0, (curses.COLS - width) // 2) if hasattr(curses, "COLS") else 10
+
+            # Create window
+            win = curses.newwin(height, width, y, x)
+            win.box()
+            win.addstr(1, 2, "Enter text for LED display (max 100 chars):", curses.A_BOLD)
+            win.addstr(2, 2, "Press Enter to confirm, ESC to cancel")
+            win.addstr(4, 2, "> ")
+            win.refresh()
+
+            # Enable cursor and echo
+            curses.curs_set(1)
+            curses.echo()
+
+            # Get input
+            text_win = win.derwin(1, width - 6, 4, 4)
+            text_win.refresh()
+
+            input_str = text_win.getstr(0, 0, 100).decode("utf-8")
+
+            # Restore cursor and echo settings
+            curses.noecho()
+            curses.curs_set(0)
+
+            # Clean up
+            del text_win
+            del win
+
+            return input_str.strip()
+
+        except Exception as e:
+            # Restore terminal state on error
+            try:
+                curses.noecho()
+                curses.curs_set(0)
+            except:
+                pass
+            return ""
 
 
 class HelpView(UIView):
