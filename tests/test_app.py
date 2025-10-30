@@ -156,12 +156,13 @@ class TestSenseTopAppSensorLoop:
 
     def test_sensor_read_loop_records_data(self):
         """Test that sensor read loop records data to history."""
-        from unittest.mock import MagicMock
-        from sensetop.sensors.imu import IMUData
-        from sensetop.sensors.environmental import EnvironmentalData
-        from sensetop.sensors.system import SystemMetrics
-        from sensetop.sensors.base import SensorReading, SensorStatus
         from datetime import datetime, timedelta
+        from unittest.mock import MagicMock
+
+        from sensetop.sensors.base import SensorReading, SensorStatus
+        from sensetop.sensors.environmental import EnvironmentalData
+        from sensetop.sensors.imu import IMUData
+        from sensetop.sensors.system import SystemMetrics
 
         with patch("sensetop.app.IMUSensor") as mock_imu:
             with patch("sensetop.app.EnvironmentalSensor") as mock_env:
@@ -255,12 +256,13 @@ class TestSenseTopAppSensorLoop:
 
     def test_alarm_triggering_in_read_loop(self):
         """Test that alarms are triggered in read loop."""
-        from unittest.mock import MagicMock
-        from sensetop.sensors.environmental import EnvironmentalData
-        from sensetop.sensors.system import SystemMetrics
-        from sensetop.sensors.imu import IMUData
-        from sensetop.sensors.base import SensorReading, SensorStatus
         from datetime import datetime, timedelta
+        from unittest.mock import MagicMock
+
+        from sensetop.sensors.base import SensorReading, SensorStatus
+        from sensetop.sensors.environmental import EnvironmentalData
+        from sensetop.sensors.imu import IMUData
+        from sensetop.sensors.system import SystemMetrics
 
         with patch("sensetop.app.IMUSensor") as mock_imu:
             with patch("sensetop.app.EnvironmentalSensor") as mock_env:
