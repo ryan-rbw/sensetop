@@ -2169,6 +2169,937 @@ The project is now ready for:
 
 ---
 
+## Session 11: Multi-Environment Development Setup
+
+**Date:** 2025-10-30
+**Duration:** ~1 hour
+**Status:** COMPLETED
+
+### Context
+
+This session marks a significant shift in development approach. Claude Code was launched directly on the target hardware (Raspberry Pi 5 with Sense HAT) rather than on a development machine. This required comprehensive documentation to establish clear multi-environment workflows.
+
+### Objectives
+
+- Create comprehensive CLAUDE.md for future Claude Code instances
+- Document multi-environment development approach (Ubuntu dev + Pi5 validation)
+- Explain tool installation via pipx for isolated Python environments
+- Create environment detection script
+- Overhaul README.md with professional presentation
+
+### Work Completed
+
+#### 1. CLAUDE.md Creation (433 lines)
+
+**Comprehensive Guide Structure:**
+
+**Architecture Overview:**
+- Application structure: sensors, display, data, config modules
+- Threading model: background sensor reads, main UI thread
+- TUI framework: curses-based with multiple views
+- Data flow: sensors → history → views/export
+
+**Multi-Environment Workflow:**
+```
+Development Machine (Ubuntu):
+- Fast iteration with mock sensors
+- Run full test suite
+- Lint and format code
+- Git commits and pushes
+
+Target Device (Raspberry Pi 5):
+- Validate with real hardware
+- Test I2C communication
+- Verify sensor readings
+- Performance validation
+- Never commit directly
+```
+
+**Key Sections:**
+1. **Project Overview**: Architecture, threading, sensor support
+2. **Common Commands**: Tests, linting, formatting, running
+3. **Multi-Environment Workflows**: Clear separation of dev vs target
+4. **Tool Installation**: Comprehensive pipx explanation
+5. **Development Patterns**: Error handling, testing, curses usage
+6. **File Structure**: Complete project layout
+7. **Hardware Integration**: I2C addresses, sensor specifications
+8. **Troubleshooting**: Common issues and solutions
+
+**pipx Explanation:**
+- Purpose: Isolated CLI tool installation (like apt for Python)
+- Why use it: Prevents dependency conflicts
+- Installation: `python3 -m pip install --user pipx`
+- Usage: `pipx install black`, `pipx install pytest`
+- Benefits: Global availability, isolated environments
+
+#### 2. README.md Overhaul (361 lines)
+
+**Professional Enhancements:**
+
+**Added Badges:**
+```markdown
+[![Tests](https://github.com/ryan-rbw/sensetop/actions/workflows/tests.yml/badge.svg)](...)
+[![Lint](https://github.com/ryan-rbw/sensetop/actions/workflows/lint.yml/badge.svg)](...)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](...)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](...)
+```
+
+**Environment Detection Section:**
+```bash
+# Detect if running on Raspberry Pi 5
+cat /proc/device-tree/model 2>/dev/null
+
+# Check for Sense HAT hardware (I2C addresses)
+i2cdetect -y 1 2>/dev/null | grep -E "(1c|5f|6a)"
+```
+
+**pipx Installation Guide:**
+- What is pipx and why use it
+- Installation instructions for Ubuntu/Raspberry Pi OS
+- Common tool installations
+- Troubleshooting PATH issues
+
+**Multi-Environment Workflow:**
+- Development: Mock sensors, fast iteration, full test suite
+- Target Hardware: Real sensors, performance validation, hardware testing
+- Clear guidance: "Develop on dev machine, validate on Pi"
+
+**Keyboard Controls Table:**
+| Key | Action |
+|-----|--------|
+| 1 | Dashboard view |
+| 2 | Graph view |
+| 3 | Alerts view |
+| 4 | Settings view |
+| h/? | Help screen |
+| q/ESC | Quit application |
+
+**Troubleshooting Section:**
+- I2C not enabled
+- Permission errors
+- Sensor read failures
+- Terminal corruption after crashes
+
+#### 3. Environment Detection Script (199 lines)
+
+**File:** `scripts/detect_environment.sh`
+
+**Features:**
+- OS detection (Ubuntu, Raspberry Pi OS, Debian, other)
+- Hardware detection (Raspberry Pi model via /proc/device-tree/model)
+- Sense HAT detection (I2C bus scan for addresses 0x1c, 0x5f, 0x6a)
+- Tool availability checks:
+  - Python 3.8+ version verification
+  - pytest, black, isort, pylint availability
+  - I2C tools (i2cdetect, i2cget)
+- Installation instructions based on OS
+- Color-coded output (green ✓, red ✗, yellow ⚠)
+
+**Usage:**
+```bash
+bash scripts/detect_environment.sh
+
+# Output example:
+Environment Detection Report
+============================
+Operating System: Raspberry Pi OS
+Hardware: Raspberry Pi 5 Model B Rev 1.0
+Sense HAT: ✓ Detected (I2C addresses: 1c, 5f, 6a)
+Python: ✓ 3.11.2
+pytest: ✓ Available
+black: ✓ Available
+I2C Tools: ✓ Available
+```
+
+**Benefits:**
+- Quick environment validation
+- Onboarding for new developers
+- Troubleshooting hardware issues
+- CI/CD environment verification (future)
+
+### Design Decisions Made
+
+1. **Multi-Environment Approach**: Clear separation between development (Ubuntu with mocks) and validation (Pi5 with real hardware)
+   - Rationale: Fast iteration on dev machine, validation on target hardware
+   - Impact: Development velocity improved, hardware testing explicit
+
+2. **pipx for Tool Installation**: Standardized on pipx for all CLI tools
+   - Rationale: Prevents dependency conflicts, cleaner than system-wide pip
+   - Impact: More reliable development environment setup
+
+3. **Comprehensive CLAUDE.md**: Single source of truth for Claude Code instances
+   - Rationale: Future sessions need complete context
+   - Impact: Faster onboarding, consistent development patterns
+
+4. **README as Entry Point**: Professional, user-focused documentation
+   - Rationale: GitHub visitors need clear project overview
+   - Impact: Better discoverability, easier contribution
+
+### Issues Encountered & Solutions
+
+**Issue 1: PATH Not Updated After pipx Install**
+- **Problem:** `pipx` installed but tools not in PATH until logout/login
+- **Root Cause:** `pipx ensurepath` adds to `~/.bashrc`, needs shell restart
+- **Solution:** `export PATH="$HOME/.local/bin:$PATH"` in current session
+- **Impact:** Documented in README troubleshooting section
+
+**Issue 2: Documentation Fragmentation**
+- **Problem:** Scattered documentation across README, SPEC, comments
+- **Root Cause:** No single comprehensive guide for development
+- **Solution:** Created CLAUDE.md as unified development guide
+- **Impact:** Future Claude Code sessions have complete context
+
+### Artifacts Produced
+
+- **CLAUDE.md**: 433 lines, comprehensive development guide
+- **README.md**: 361 lines, professional project documentation
+- **scripts/detect_environment.sh**: 199 lines, environment validation script
+- **Total**: 993 lines of documentation and tooling
+
+### Commit Information
+
+- **Commit Hash:** 6e49494
+- **Message:** "Document multi-environment development workflow and tooling"
+- **Files Changed:** 3
+- **Lines Added:** 993
+
+### Notes & Observations
+
+1. **Multi-Environment Critical**: Developing on Pi5 directly is slow; mock-based development on Ubuntu is much faster
+2. **Documentation ROI**: Investing in comprehensive docs pays off immediately for future sessions
+3. **pipx Adoption**: Tool isolation prevents "works on my machine" issues
+4. **Environment Detection**: Automated validation reduces troubleshooting time
+5. **GitHub Presentation**: Professional README improves project credibility
+
+### What Works Well
+
+✅ CLAUDE.md provides complete context for future sessions
+✅ README is professional and informative
+✅ Environment detection automates validation
+✅ pipx explanation is clear and actionable
+✅ Multi-environment workflow is well-documented
+✅ Troubleshooting section addresses common issues
+
+### Recommendations for Future Sessions
+
+1. **Respect Multi-Environment Workflow**: Always develop with mocks on dev machine, validate on Pi5
+2. **Update CLAUDE.md**: Keep development patterns and architecture current
+3. **Run Environment Detection**: Use script to validate setup before starting work
+4. **Document Tool Installation**: Keep pipx instructions updated
+5. **Maintain README**: Keep keyboard shortcuts and features current
+
+---
+
+## Session 12: Hardware Testing & Bug Fixes on Raspberry Pi 5
+
+**Date:** 2025-10-30
+**Duration:** ~2 hours
+**Status:** COMPLETED
+
+### Context
+
+First comprehensive testing session on actual Raspberry Pi 5 hardware with real Sense HAT. Multiple critical bugs discovered during hands-on testing that only manifest with real hardware and curses terminal interaction.
+
+### Objectives
+
+- Configure Git for push access from Raspberry Pi
+- Fix failing GitHub Actions workflows
+- Test application on real hardware
+- Fix crashes and UI issues discovered during testing
+- Improve terminal cleanup on application exit
+
+### Work Completed
+
+#### 1. Git Configuration & GitHub Setup
+
+**Git User Configuration:**
+```bash
+git config --global user.name "ryan-rbw"
+git config --global user.email "ryan.rbw@gmail.com"
+```
+
+**GitHub Authentication (Token-Based):**
+```bash
+# Set up credential helper
+git config --global credential.helper store
+
+# Push with token
+git push https://ryan-rbw:TOKEN@github.com/ryan-rbw/sensetop.git master
+
+# Token now stored, future pushes work without it
+```
+
+**Environment Setup:**
+```bash
+# PATH configuration for pipx-installed tools
+export PATH="$HOME/.local/bin:$PATH"
+
+# Verify tools available
+which black isort pytest
+```
+
+#### 2. GitHub Actions Workflow Fixes
+
+**Issue: Lint Workflow Failing**
+
+**Error:**
+```
+error: Unknown multi_line_mode value multi_line_mode=3 in /home/runner/work/sensetop/sensetop/pyproject.toml.
+```
+
+**Root Cause:** isort 7.0+ changed configuration parameter name
+- Old: `multi_line_mode = 3`
+- New: `multi_line_output = 3`
+
+**Fix in pyproject.toml (line 95):**
+```toml
+[tool.isort]
+profile = "black"
+multi_line_output = 3  # Changed from multi_line_mode
+include_trailing_comma = true
+force_grid_wrap = 0
+```
+
+**Additional Fix: Import Ordering**
+
+**File:** `tests/test_app.py`
+**Issue:** Standard library imports after local imports (isort violation)
+
+**Before:**
+```python
+from sensetop.app import SenseTopApp
+from sensetop.config import Config
+import time
+```
+
+**After:**
+```python
+import time
+
+from sensetop.app import SenseTopApp
+from sensetop.config import Config
+```
+
+**Results:** All GitHub workflows passing (tests, lint, build)
+
+#### 3. Bug Fix #1: AlertView Crash (Key '3')
+
+**Symptom:**
+User pressed '3' to view alerts → application exited immediately with AttributeError
+
+**Error:**
+```python
+AttributeError: type object 'ColorPair' has no attribute 'WARNING'
+```
+
+**Root Cause:**
+ColorPair enum values are STATUS_WARNING, STATUS_ERROR, not WARNING, ERROR
+
+**Fix in sensetop/display/views.py:**
+
+**Lines 860, 862:**
+```python
+# Before:
+color = ColorPair.WARNING if alarm.severity == AlarmSeverity.WARNING else ColorPair.ERROR
+
+# After:
+color = ColorPair.STATUS_WARNING if alarm.severity == AlarmSeverity.WARNING else ColorPair.STATUS_ERROR
+```
+
+**ColorPair Enum Values (Correct):**
+- STATUS_OK
+- STATUS_WARNING
+- STATUS_ERROR
+- STATUS_CRITICAL
+- HIGHLIGHT
+- VALUE
+- LABEL
+
+#### 4. Bug Fix #2: Graphs Too Small
+
+**User Feedback:** "I'd like to make the historical graphs taller. There are only 4 charts and we should spread them out increase their height."
+
+**Original Implementation:**
+- Single-line sparklines (8 Unicode characters: ▁▂▃▄▅▆▇█)
+- Very compact, hard to see trends
+- Only ~2 lines per sensor
+
+**Enhanced Implementation:**
+
+**File:** `sensetop/display/views.py` (lines 608-665)
+
+**Key Changes:**
+1. Calculate dynamic chart height based on available space:
+```python
+available_height = height - start_y - 3
+chart_height = max(3, min(5, available_height // len(sensors_data) - 2))
+```
+
+2. Replace sparklines with multi-line bar charts:
+```python
+# Old: Single-line sparkline
+sparkline = GraphRenderer.render_sparkline(values, width=width - 20)
+stdscr.addstr(y, len(label_str) + 2, sparkline, attr)
+
+# New: Multi-line bar chart (3-5 lines per sensor)
+bar_chart = GraphRenderer.render_bar_chart(values, height=chart_height, width=width - 4)
+chart_lines = bar_chart.split('\n')
+for i, line in enumerate(chart_lines):
+    stdscr.addstr(y + 1 + i, 2, line, attr)
+```
+
+**Results:**
+- Graphs now 3-5 lines tall (was 1 line)
+- Much easier to see trends
+- Better use of vertical screen space
+
+#### 5. Bug Fix #3: Quit Not Graceful
+
+**Symptom:**
+Pressing 'q' to quit leaves terminal in corrupted state:
+- Terminal background stuck with app colors
+- Cursor invisible (blinking cursor missing)
+- Terminal appears "hung"
+
+**Root Cause:**
+- SettingsView crash prevented curses cleanup from running
+- curses.wrapper() cleanup didn't execute properly
+- Curses state not restored: cbreak mode, echo off, custom colors active
+
+**Fix 1: SettingsView Crash (Line 1049)**
+
+**Error:**
+```python
+AttributeError: type object 'ColorPair' has no attribute 'ERROR'
+```
+
+**Fix:**
+```python
+# Before:
+color = ColorPair.ERROR
+
+# After:
+color = ColorPair.HIGHLIGHT
+```
+
+**Fix 2: Enhanced Terminal Cleanup**
+
+**File:** `sensetop/display/tui.py` (lines 185-193)
+
+**Added explicit curses cleanup:**
+```python
+def shutdown(self) -> None:
+    """Shutdown the TUI and restore terminal."""
+    if self.stdscr is not None:
+        try:
+            self.stdscr.clear()
+            self.stdscr.refresh()
+        except curses.error:
+            pass
+
+    # Explicitly restore terminal state
+    # This is critical for proper cleanup after crashes
+    try:
+        curses.nocbreak()  # Disable cbreak mode
+        curses.echo()       # Re-enable echo
+        curses.endwin()     # Restore terminal state
+    except Exception:
+        # If curses methods fail, cleanup still attempted
+        pass
+```
+
+**Fix 3: Improved Error Handling in Main Loop**
+
+**File:** `sensetop/app.py` (lines 259-282)
+
+**Enhanced _run_curses() method:**
+```python
+while self.running:
+    try:
+        # Draw current view
+        self.tui.draw()
+
+        # Handle input
+        key = stdscr.getch()
+        if not self.tui.handle_input(key):
+            self.running = False
+            self.logger.info("User requested quit")
+            break
+
+    except curses.error as e:
+        # Handle curses errors during drawing/input
+        self.logger.error(f"Curses error in main loop: {e}")
+        # Continue running unless it's a fatal error
+        pass
+```
+
+**Improved shutdown() method (lines 284-314):**
+```python
+def shutdown(self) -> None:
+    """Shutdown the application and clean up resources."""
+    # All steps wrapped in try-except blocks
+    try:
+        self.tui.shutdown()
+    except Exception as e:
+        self.logger.error(f"Error shutting down TUI: {e}")
+
+    # Additional cleanup steps...
+```
+
+**Fix 4: Terminal Recovery Script**
+
+**File:** `scripts/reset_terminal.sh` (15 lines)
+
+**Manual recovery for stuck terminals:**
+```bash
+#!/bin/bash
+echo "Resetting terminal state..."
+reset
+echo "If cursor is still invisible, try: tput cnorm"
+echo "If colors are wrong, try: tput sgr0"
+```
+
+**Results:**
+- Application now exits cleanly
+- Terminal state fully restored
+- Cursor visible after quit
+- No color corruption
+- Manual recovery available if needed
+
+#### 6. Hardware Validation Results
+
+**Real Sensor Readings on Raspberry Pi 5:**
+
+**Environmental Sensor:**
+- Temperature: 47.3°C (housing temp, warm from CPU)
+- Humidity: 18.4%
+- Pressure: 1005.7 hPa
+- Status: OK
+
+**IMU Sensor:**
+- Pitch: 1.9°, Roll: 0.5°, Yaw: 0.0°
+- Accelerometer: Reading correctly
+- Gyroscope: Reading correctly
+- Status: OK
+
+**System Sensor:**
+- CPU Temperature: Reading correctly
+- Memory: Reading correctly
+- Uptime: Reading correctly
+- Status: OK
+
+**All sensors validated working on real hardware!**
+
+### Issues Encountered & Solutions
+
+**Issue 1: isort Configuration Incompatibility**
+- **Problem:** `multi_line_mode` not supported in isort 7.0+
+- **Solution:** Changed to `multi_line_output` in pyproject.toml
+- **Impact:** GitHub Actions workflows now passing
+
+**Issue 2: ColorPair Enum Misuse**
+- **Problem:** Used `ColorPair.WARNING` instead of `ColorPair.STATUS_WARNING`
+- **Solution:** Updated all color references to use correct enum values
+- **Locations:** AlertView (lines 860, 862), SettingsView (line 1049)
+- **Impact:** No more crashes when viewing alerts or settings
+
+**Issue 3: Terminal State Corruption**
+- **Problem:** Curses not cleaning up properly after crashes
+- **Root Cause:** Exceptions prevented cleanup code from running
+- **Solution:**
+  1. Fixed all crashes (ColorPair issues)
+  2. Added explicit curses cleanup (nocbreak, echo, endwin)
+  3. Wrapped all cleanup steps in try-except
+- **Impact:** Terminal always restored, even after crashes
+
+**Issue 4: Graph Visibility**
+- **Problem:** Single-line sparklines too small
+- **Solution:** Dynamic bar charts with 3-5 line height
+- **Impact:** Trends much more visible
+
+### Code Changes Summary
+
+**Files Modified:**
+1. `pyproject.toml` - isort configuration fix
+2. `tests/test_app.py` - import ordering fix
+3. `sensetop/display/views.py` - ColorPair fixes, graph height improvement (3 locations)
+4. `sensetop/display/tui.py` - terminal cleanup enhancement
+5. `sensetop/app.py` - error handling improvements
+6. `scripts/reset_terminal.sh` - NEW recovery script
+
+**Lines Changed:** ~100 lines across 6 files
+
+**Commits:**
+1. "Fix lint workflow: update isort config and import ordering"
+2. "Fix AlertView ColorPair references (WARNING→STATUS_WARNING, ERROR→STATUS_ERROR)"
+3. "Improve graph view with taller bar charts"
+4. "Fix terminal cleanup and add explicit curses shutdown"
+5. "Fix SettingsView ColorPair.ERROR → ColorPair.HIGHLIGHT"
+
+### Testing Results
+
+**Before Fixes:**
+- ❌ Alerts view crashes on key '3'
+- ❌ Settings view crashes on key '4'
+- ❌ Terminal corrupted on quit
+- ❌ Graphs too small to read
+- ❌ GitHub workflows failing
+
+**After Fixes:**
+- ✅ All views work correctly
+- ✅ Terminal cleanly restored on quit
+- ✅ Graphs readable and informative
+- ✅ All GitHub workflows passing
+- ✅ 190 tests still passing
+- ✅ Hardware sensors working correctly
+
+### What Works Well
+
+✅ Multi-environment development approach validated
+✅ Real hardware testing caught critical bugs
+✅ Curses cleanup now robust
+✅ ColorPair enum usage consistent
+✅ Graph visualization improved significantly
+✅ Terminal recovery graceful
+✅ All sensors reading correctly on Pi5
+
+### Known Limitations & Future Work
+
+1. **No Automated Hardware Testing**: CI/CD still uses mocks; no Pi5 runner
+2. **Views Coverage Still Low**: Complex curses testing not prioritized
+3. **No LED Matrix Control Yet**: Phase 6 still pending
+
+### Recommendations
+
+1. **Always Test on Real Hardware**: Mock testing missed these curses issues
+2. **Terminal Cleanup Critical**: Curses apps must explicitly cleanup
+3. **ColorPair Enum Discipline**: Use constants, not string names
+4. **Graph Tuning**: Bar charts work better than sparklines for trends
+5. **Recovery Scripts**: Always provide manual terminal reset option
+
+---
+
+## Session 13: LED Matrix Display Specification (Phase 6)
+
+**Date:** 2025-10-30
+**Duration:** ~30 minutes
+**Status:** COMPLETED
+
+### Objectives
+
+- Add comprehensive LED matrix display features to SPEC.md
+- Specify text scrolling mode with color options
+- Specify worm animation mode with spiral algorithm
+- Define dashboard integration and controls
+- Plan Phase 6 implementation timeline
+
+### Work Completed
+
+#### 1. LED Matrix Display Control Section (SPEC.md lines 65-149)
+
+**User Requirements:**
+- Dashboard cursor-based selection for LED modes
+- Text display mode with scrolling and color options
+- Worm animation: 6-segment clockwise spiral from outer edge to center
+- Each worm segment different color
+- Integration with main dashboard
+
+**Specification Sections Added:**
+
+**1. LED Display Mode Selection**
+```markdown
+- Interactive cursor-based selection menu on dashboard
+- Navigate modes with arrow keys (↑/↓)
+- Activate selected mode with Enter key
+- Return to sensor monitoring with Escape/q
+- Current mode displayed on dashboard status
+```
+
+**2. Text Display Mode**
+
+**Text Input:**
+- User enters custom text string (max 100 characters)
+- Text input dialog with live preview
+- Support for alphanumeric characters, spaces, basic punctuation
+
+**Scrolling Behavior:**
+- Horizontal scrolling from right to left across 8×8 matrix
+- Configurable scroll speed (slow/medium/fast)
+- Smooth character-by-character animation
+- Continuous loop until mode changed
+
+**Color Options:**
+- **Solid Color**: Predefined palette (red, green, blue, yellow, cyan, magenta, white)
+- **Custom RGB**: Specify custom color (R, G, B values 0-255)
+- **Rainbow Mode**: Text color cycles through spectrum as it scrolls
+- **Gradient Mode**: Each character different color from gradient
+
+**Display Properties:**
+- 5×7 pixel font rendering (standard Sense HAT font)
+- Configurable brightness (0-100%)
+- Background color selection (default: black/off)
+
+**3. Worm Animation Mode**
+
+**Worm Properties:**
+- 6-segment animated "worm" pattern
+- Each segment is single LED pixel
+- Each segment has distinct color
+
+**Animation Behavior:**
+- Starts at outer edge of 8×8 matrix
+- Follows clockwise spiral path inward
+- Path: outer perimeter → second ring → third ring → center
+- Smooth pixel-by-pixel movement
+- Disappears as it reaches center pixel
+- Restarts from outer edge continuously
+
+**Color Configuration:**
+- **Rainbow Worm**: Each segment from spectrum (ROYGBV pattern)
+- **Custom Colors**: User defines 6 segment colors individually
+- **Themed Palettes**: Predefined color schemes (fire, ocean, forest, neon)
+
+**Speed Control:**
+- Configurable animation speed (1-10, where 10 is fastest)
+- Default: medium speed (5)
+- Real-time speed adjustment without restart
+
+**Spiral Algorithm:**
+- Clockwise traversal: top-right → right edge → bottom → left → inner spiral
+- Total path length: 64 pixels (entire matrix)
+- Head segment always visible, tail fades approaching center
+
+**4. Additional LED Display Modes (Future Enhancement)**
+- Status Indicator Mode: Show sensor status with color codes
+- Graph Mode: Simple bar graph of sensor values
+- Alert Mode: Flash patterns for alarm conditions
+- Off Mode: All LEDs disabled to save power
+
+**5. LED Control Integration**
+
+**Dashboard Interface:**
+- LED mode selector widget in dashboard sidebar
+- Current mode and status displayed
+- Quick toggle with dedicated key (e.g., 'L' for LED control)
+
+**Settings Persistence:**
+- LED mode and configuration saved to `~/.sensetop/led_config.json`
+- Restore previous mode on application restart
+- Default mode: Off (LEDs disabled)
+
+**Resource Management:**
+- LED updates run in separate thread (non-blocking)
+- Configurable LED refresh rate (10-60 FPS)
+- Automatic cleanup on application exit (clear matrix)
+
+**Hardware Integration:**
+- Direct communication via Sense HAT library (`sense_hat.set_pixel`, `sense_hat.set_pixels`)
+- Brightness control via `sense_hat.low_light` or gamma correction
+- Error handling for hardware communication failures
+
+**6. User Experience Enhancements**
+- Live preview of LED output in terminal (8×8 ASCII representation)
+- Color picker with visual feedback
+- Animation speed preview
+- Save/load custom display configurations
+- Quick presets for common patterns
+
+#### 2. Updated Hardware Interface Description (line 170)
+
+**Added:**
+```markdown
+- 8×8 RGB LED matrix for visual display and feedback
+```
+
+**Sense HAT Components:**
+- LSM9DS1: 9-DOF IMU
+- HTS221: Temperature and humidity sensor
+- LPS25H: Pressure sensor
+- **8×8 RGB LED matrix** ← NEW
+
+#### 3. Updated Project Deliverables (lines 235-245)
+
+**Sensor Modules:**
+- [x] IMU module
+- [x] Temperature/humidity module
+- [x] Pressure module
+- [x] CPU temperature and system metrics
+- [ ] **LED matrix control module** ← NEW
+
+**LED Matrix Control Module (NEW):**
+- [ ] LED display manager with mode switching
+- [ ] Text scrolling engine with font rendering
+- [ ] Color management (solid, rainbow, gradient, custom RGB)
+- [ ] Worm animation with spiral path algorithm
+- [ ] LED configuration persistence (JSON)
+- [ ] Thread-based LED updates (non-blocking)
+- [ ] Terminal preview (8×8 ASCII representation)
+- [ ] Input dialogs for text and color configuration
+
+#### 4. Phase 6 Development Plan (lines 344-354)
+
+**Added to Development Phases:**
+
+```markdown
+#### Phase 6: LED Matrix Display Features (Week 6+)
+- Implement LED display manager and mode system
+- Create text scrolling engine with color support
+- Develop worm animation with spiral algorithm
+- Build dashboard LED control interface
+- Add LED configuration persistence
+- Implement thread-based LED updates
+- Create terminal-based LED preview (8×8 ASCII)
+- Add input dialogs for text and colors
+- Test all LED modes on hardware
+- Document LED feature usage
+```
+
+### Design Decisions Made
+
+1. **Dashboard Integration**: LED controls accessible from main dashboard (key 'L')
+   - Rationale: Quick access without view switching
+   - Impact: Seamless user experience
+
+2. **Thread-Based LED Updates**: Separate thread for LED refresh
+   - Rationale: Prevents blocking sensor reads or UI updates
+   - Impact: Smooth animations, responsive UI
+
+3. **Multiple Color Modes**: Solid, custom RGB, rainbow, gradient
+   - Rationale: User creativity and variety
+   - Impact: Engaging visual experience
+
+4. **Configuration Persistence**: Save/restore LED mode via JSON
+   - Rationale: Remember user preferences
+   - Impact: Better UX on application restart
+
+5. **Terminal Preview**: ASCII representation of 8×8 matrix
+   - Rationale: Visual feedback for SSH users without physical access
+   - Impact: Better remote development experience
+
+6. **Spiral Algorithm for Worm**: Clockwise from outer edge to center
+   - Rationale: Visually interesting, fills entire matrix
+   - Impact: Engaging animation pattern
+
+### Specification Quality
+
+**Comprehensive Coverage:**
+✅ User interaction model defined
+✅ Technical implementation details specified
+✅ Hardware integration requirements documented
+✅ Resource management addressed
+✅ Error handling considered
+✅ User experience enhancements included
+
+**Clear Requirements:**
+✅ Text input: max 100 characters
+✅ Worm segments: 6 elements
+✅ Scroll speed: slow/medium/fast
+✅ Animation speed: 1-10 scale
+✅ LED refresh rate: 10-60 FPS
+✅ Font: 5×7 pixels (Sense HAT standard)
+
+**Future-Proofed:**
+✅ Additional LED modes section for future enhancements
+✅ Modular design allows incremental development
+✅ Extensible color system
+✅ Flexible animation framework
+
+### Artifacts Produced
+
+- **SPEC.md updates**: 86 new lines
+  - LED Matrix Display Control section (lines 65-149)
+  - Hardware interface update (line 170)
+  - LED Matrix Control Module deliverables (lines 235-245)
+  - Phase 6 development plan (lines 344-354)
+
+### Commit Information
+
+- **Commit Hash:** c6c04ec
+- **Message:** "Add LED Matrix Display Control specification"
+- **Files Changed:** 1 (SPEC.md)
+- **Lines Added:** 114
+- **Lines Removed:** 6
+
+**Full Commit Message:**
+```
+Add LED Matrix Display Control specification
+
+Comprehensive specification for Phase 6 LED matrix features:
+
+1. LED Display Mode Selection:
+   - Cursor-based navigation on dashboard
+   - Multiple display modes with keyboard control
+
+2. Text Display Mode:
+   - Custom text input (max 100 chars)
+   - Horizontal scrolling animation
+   - Color options: solid, custom RGB, rainbow, gradient
+   - Configurable speed and brightness
+
+3. Worm Animation Mode:
+   - 6-segment animated worm
+   - Clockwise spiral path from outer edge to center
+   - Each segment distinct color (rainbow/custom/themed)
+   - Configurable animation speed (1-10)
+   - 64-pixel spiral algorithm
+
+4. Integration:
+   - Dashboard sidebar widget
+   - Thread-based non-blocking updates
+   - Config persistence (~/.sensetop/led_config.json)
+   - Terminal preview (8×8 ASCII representation)
+   - Hardware integration via sense_hat library
+
+5. Development Plan:
+   - Added Phase 6 to development timeline
+   - Updated hardware interface description
+   - Added LED module to deliverables checklist
+```
+
+### What Works Well
+
+✅ Specification is comprehensive and actionable
+✅ User requirements clearly translated to technical specs
+✅ Implementation details provided for developers
+✅ Hardware constraints documented
+✅ UX considerations included
+✅ Phase 6 development plan clear
+
+### Implementation Readiness
+
+**Ready for Development:**
+- ✅ User interaction model defined
+- ✅ Technical architecture specified
+- ✅ Hardware APIs documented
+- ✅ Threading model designed
+- ✅ Configuration persistence planned
+- ✅ Testing approach outlined
+
+**Next Steps for Phase 6 Implementation:**
+1. Create `sensetop/display/led_manager.py` - LED display manager
+2. Implement text scrolling engine with Sense HAT fonts
+3. Develop spiral path algorithm for worm animation
+4. Add LED mode selector to dashboard view
+5. Implement JSON configuration persistence
+6. Create thread-based LED update loop
+7. Add terminal ASCII preview renderer
+8. Test all modes on Raspberry Pi 5 hardware
+
+### Session Summary
+
+Successfully added comprehensive LED Matrix Display Control specification to SPEC.md, defining Phase 6 development work. Specification covers:
+- User interaction model (dashboard integration)
+- Text scrolling with multiple color modes
+- Worm animation with spiral algorithm
+- Hardware integration requirements
+- Resource management (threading, FPS)
+- Configuration persistence
+- Terminal preview for remote access
+
+Specification is implementation-ready and provides clear guidance for Phase 6 development.
+
+---
+
 ## Session Tracking (Updated)
 
 | Session | Date | Focus | Status |
@@ -2183,6 +3114,9 @@ The project is now ready for:
 | 8 | 2025-10-28 | Phase 4: Alert & Settings UI (Part 2) | ✅ Complete |
 | 9 | 2025-10-29 | Phase 5: Release Automation with GitHub Actions | ✅ Complete |
 | 10 | 2025-10-29 | Test Coverage Improvement & First Release (v0.2.0) | ✅ Complete |
+| 11 | 2025-10-30 | Multi-Environment Development Setup | ✅ Complete |
+| 12 | 2025-10-30 | Hardware Testing & Bug Fixes on Raspberry Pi 5 | ✅ Complete |
+| 13 | 2025-10-30 | LED Matrix Display Specification (Phase 6) | ✅ Complete |
 
 **Overall Project Status:** ✅ **FIRST RELEASE COMPLETE (v0.2.0)**
 
