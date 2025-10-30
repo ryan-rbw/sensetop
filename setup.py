@@ -7,7 +7,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="sensetop",
-    version="0.2.0-dev",
+    version="0.3.0-dev",
     author="Ryan RBW",
     description="Real-time monitoring application for Sense HAT on Raspberry Pi 5",
     long_description=long_description,
