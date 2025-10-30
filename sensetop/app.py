@@ -256,17 +256,30 @@ class SenseTopApp:
 
             # Main event loop
             while self.running:
-                # Draw current view
-                self.tui.draw()
+                try:
+                    # Draw current view
+                    self.tui.draw()
 
-                # Handle input
-                key = stdscr.getch()
-                if not self.tui.handle_input(key):
-                    self.running = False
+                    # Handle input
+                    key = stdscr.getch()
+                    if not self.tui.handle_input(key):
+                        self.running = False
+                        self.logger.info("User requested quit")
+                        break
+
+                except curses.error as e:
+                    # Handle curses errors during drawing/input
+                    self.logger.error(f"Curses error in main loop: {e}")
+                    # Continue running unless it's a fatal error
+                    pass
 
         except KeyboardInterrupt:
             self.logger.info("Application interrupted by user")
             self.running = False
+        except Exception as e:
+            self.logger.error(f"Error in curses main loop: {e}", exc_info=True)
+            self.running = False
+            raise
 
     def shutdown(self) -> None:
         """Shutdown the application and clean up resources."""
@@ -277,16 +290,25 @@ class SenseTopApp:
 
         # Wait for sensor thread
         if self.sensor_thread is not None:
-            self.sensor_thread.join(timeout=2.0)
+            try:
+                self.sensor_thread.join(timeout=2.0)
+                self.logger.debug("Sensor thread stopped")
+            except Exception as e:
+                self.logger.error(f"Error stopping sensor thread: {e}")
 
         # Shutdown TUI
-        self.tui.shutdown()
+        try:
+            self.tui.shutdown()
+            self.logger.debug("TUI shutdown complete")
+        except Exception as e:
+            self.logger.error(f"Error shutting down TUI: {e}")
 
         # Shutdown sensors
-        for sensor in self.sensors.values():
+        for sensor_name, sensor in self.sensors.items():
             try:
                 sensor.shutdown()
+                self.logger.debug(f"Sensor {sensor_name} shutdown")
             except Exception as e:
-                self.logger.error(f"Error shutting down sensor: {e}")
+                self.logger.error(f"Error shutting down sensor {sensor_name}: {e}")
 
         self.logger.info("Application shutdown complete")
